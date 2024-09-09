@@ -1,13 +1,17 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 // Replace with your Airstack API key
-const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e';
+const AIRSTACK_API_KEY = 'YOUR_AIRSTACK_API_KEY';
 
 // The NFT contract address we're checking for
 const NFT_CONTRACT_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC';
 
 // The background image URL
 const BACKGROUND_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV';
+
+// Frame image URLs
+const FRAME_IMAGE_URL_OWNER = 'https://example.com/nft-owner-frame.png';
+const FRAME_IMAGE_URL_NON_OWNER = 'https://example.com/non-nft-owner-frame.png';
 
 interface TokenBalance {
   formattedAmount: string;
@@ -56,6 +60,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data: AirstackResponse = await response.json();
     const hasNFT = data.data.Wallet?.[0]?.tokenBalances.some(balance => parseFloat(balance.formattedAmount) > 0) ?? false;
 
+    const frameImageUrl = hasNFT ? FRAME_IMAGE_URL_OWNER : FRAME_IMAGE_URL_NON_OWNER;
+
     res.setHeader('Content-Type', 'text/html');
     res.status(200).send(`
       <!DOCTYPE html>
@@ -63,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         <head>
           <title>NFT Ownership Check</title>
           <meta property="fc:frame" content="vNext" />
-          <meta property="fc:frame:image" content="${BACKGROUND_IMAGE_URL}" />
+          <meta property="fc:frame:image" content="${frameImageUrl}" />
           <meta property="fc:frame:button:1" content="Check Again" />
           <style>
             body, html {
