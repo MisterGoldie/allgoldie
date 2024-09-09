@@ -1,13 +1,18 @@
 import { Button, Frog, TextInput } from 'frog'
 import { handle } from 'frog/vercel'
 
-const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e' // Replace with your actual Airstack API key
-const NFT_CONTRACT_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC' // The NFT contract address we're checking for
+const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
+const NFT_CONTRACT_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
+
+// Replace these with actual URLs to your images
+const INITIAL_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
+const SUCCESS_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
+const ERROR_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
 
 export const app = new Frog({
   basePath: '/api',
   imageOptions: { width: 1200, height: 630 },
-  title: 'NFT Ownership Checker', // Added title property
+  title: 'Goldie Ownership Checker',
 })
 
 async function checkNFTOwnership(identity: string): Promise<boolean> {
@@ -47,12 +52,7 @@ async function checkNFTOwnership(identity: string): Promise<boolean> {
 
 app.frame('/', (c) => {
   return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', padding: '20px' }}>
-        <h1 style={{ fontSize: '48px', marginBottom: '20px', textAlign: 'center' }}>NFT Ownership Checker</h1>
-        <p style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center' }}>Enter your address, ENS name, or Farcaster name to check ownership</p>
-      </div>
-    ),
+    image: INITIAL_IMAGE_URL,
     intents: [
       <TextInput placeholder="Enter address, ENS, or Farcaster name" />,
       <Button action="/check">Check Ownership</Button>,
@@ -65,12 +65,7 @@ app.frame('/check', async (c) => {
 
   if (!identity) {
     return c.res({
-      image: (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', padding: '20px' }}>
-          <h1 style={{ fontSize: '48px', marginBottom: '20px', textAlign: 'center' }}>Error</h1>
-          <p style={{ fontSize: '24px', textAlign: 'center' }}>Please enter a valid identity.</p>
-        </div>
-      ),
+      image: ERROR_IMAGE_URL,
       intents: [<Button action="/">Back</Button>]
     })
   }
@@ -78,14 +73,7 @@ app.frame('/check', async (c) => {
   const ownsNFT = await checkNFTOwnership(identity)
 
   return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', padding: '20px' }}>
-        <h1 style={{ fontSize: '48px', marginBottom: '20px', textAlign: 'center' }}>Ownership Result</h1>
-        <p style={{ fontSize: '24px', textAlign: 'center' }}>
-          {ownsNFT ? `${identity} owns the NFT!` : `${identity} does not own the NFT.`}
-        </p>
-      </div>
-    ),
+    image: ownsNFT ? SUCCESS_IMAGE_URL : ERROR_IMAGE_URL,
     intents: [
       <Button action="/">Check Another</Button>
     ]
