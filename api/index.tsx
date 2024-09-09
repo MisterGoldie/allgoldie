@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 // Replace with your Airstack API key
-const AIRSTACK_API_KEY = 'YOUR_AIRSTACK_API_KEY';
+const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e';
 
 // The NFT contract address we're checking for
 const NFT_CONTRACT_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC';
