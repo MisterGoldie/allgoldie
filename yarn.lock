@@ -1085,7 +1085,7 @@ form-data@^4.0.0:
     combined-stream "^1.0.8"
     mime-types "^2.1.12"
 
-frog@latest:
+frog@^0.17.1:
   version "0.17.1"
   resolved "https://registry.npmjs.org/frog/-/frog-0.17.1.tgz"
   integrity sha512-jiPocHPuDb/G30lzXnI19x47D+e9YwuY9coHJ2vlb7LhngjPoCI8VItteC+Kodnq8YLBj2BynSVrlA3IL7G65A==
