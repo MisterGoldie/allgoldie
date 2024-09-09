@@ -49,7 +49,7 @@ app.frame('/', (c) => {
   return c.res({
     image: "https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmQu3WSN8JE1cgjpUY7fVy3nRtfzWRyPU5TLvusdf92PT4",
     intents: [
-      <TextInput placeholder="Enter address, ENS, or Farcaster name" />,
+      <TextInput placeholder="Enter address, ENS, or FID" />,
       <Button action="/check">Check Ownership</Button>,
     ],
   })
