@@ -4,15 +4,10 @@ import { handle } from 'frog/vercel'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 const NFT_CONTRACT_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 
-// Replace these with actual URLs to your images
-const INITIAL_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
-const SUCCESS_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
-const ERROR_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
-
-export const app = new Frog({
+const app = new Frog({
+  assetsPath: '/',
   basePath: '/api',
-  imageOptions: { width: 1200, height: 630 },
-  title: 'Goldie Ownership Checker',
+  title: 'Goldie NFT Checker',
 })
 
 async function checkNFTOwnership(identity: string): Promise<boolean> {
@@ -52,11 +47,11 @@ async function checkNFTOwnership(identity: string): Promise<boolean> {
 
 app.frame('/', (c) => {
   return c.res({
-    image: INITIAL_IMAGE_URL,
+    image: "https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmQu3WSN8JE1cgjpUY7fVy3nRtfzWRyPU5TLvusdf92PT4",
     intents: [
       <TextInput placeholder="Enter address, ENS, or Farcaster name" />,
       <Button action="/check">Check Ownership</Button>,
-    ]
+    ],
   })
 })
 
@@ -65,7 +60,7 @@ app.frame('/check', async (c) => {
 
   if (!identity) {
     return c.res({
-      image: ERROR_IMAGE_URL,
+      image: "https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmQu3WSN8JE1cgjpUY7fVy3nRtfzWRyPU5TLvusdf92PT4",
       intents: [<Button action="/">Back</Button>]
     })
   }
@@ -73,7 +68,9 @@ app.frame('/check', async (c) => {
   const ownsNFT = await checkNFTOwnership(identity)
 
   return c.res({
-    image: ownsNFT ? SUCCESS_IMAGE_URL : ERROR_IMAGE_URL,
+    image: ownsNFT 
+      ? "https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmQu3WSN8JE1cgjpUY7fVy3nRtfzWRyPU5TLvusdf92PT4"
+      : "https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmQu3WSN8JE1cgjpUY7fVy3nRtfzWRyPU5TLvusdf92PT4",
     intents: [
       <Button action="/">Check Another</Button>
     ]
