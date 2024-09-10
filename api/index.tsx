@@ -37,7 +37,7 @@ app.frame('/', async (c) => {
     image: IPFS_IMAGE_URL,
     intents: [
       <button onClick={() => console.log('Button clicked')}>
-        You own {nftAmount} Scary Garys NFTs
+        You own {nftAmount} Scary Garys 
       </button>
     ],
   })
