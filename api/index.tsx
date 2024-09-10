@@ -16,7 +16,7 @@ const app = new Frog({
 )
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
-const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
+const ALCHEMY_API_KEY = 'https://eth-mainnet.g.alchemy.com/v2/pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
 const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmX7Py8TGVGdp3ffXb4XGfd83WwmLZ8FyQV2PEquhAFZ2P'
 const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/Qma1Evr6rzzXoCDG5kzWgD7vekUpdj5VYCdKu8VcgSjxdD'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
@@ -94,6 +94,7 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
 }
 
 app.frame('/', (c) => {
+  console.log('Rendering initial frame');
   return c.res({
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
@@ -104,6 +105,7 @@ app.frame('/', (c) => {
 })
 
 app.frame('/check', async (c) => {
+  console.log('Check frame called');
   console.log('Full frameData:', JSON.stringify(c.frameData, null, 2));
   const { fid } = c.frameData || {};
   const { displayName, pfpUrl } = c.var.interactor || {};
