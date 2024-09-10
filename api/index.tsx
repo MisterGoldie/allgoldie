@@ -3,6 +3,7 @@ import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
 import axios from 'axios'
+import NodeCache from 'node-cache'
 
 const app = new Frog({
   basePath: '/api',
@@ -23,6 +24,9 @@ const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7z
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 const ETHERSCAN_API_KEY = 'ZUGFEPG5A713UMRZKQA9MQVNGRHPQIHMU7'
+
+const metadataCache = new NodeCache({ stdTTL: 600 }) // Cache for 10 minutes
+const ITEMS_PER_PAGE = 5 // Number of NFTs to fetch per page
 
 interface NFTMetadata {
   tokenId: string;
@@ -52,7 +56,7 @@ async function getConnectedAddresses(fid: string): Promise<string[]> {
 
     const response = await axios.post(AIRSTACK_API_URL, 
       { query, variables },
-      { headers: { 'Authorization': AIRSTACK_API_KEY } }
+      { headers: { 'Authorization': AIRSTACK_API_KEY }, timeout: 5000 }
     );
 
     const data = response.data;
@@ -84,7 +88,7 @@ async function getOwnedScaryGarys(address: string): Promise<number> {
   }
 
   try {
-    const response = await axios.get(url, { params })
+    const response = await axios.get(url, { params, timeout: 5000 })
     return response.data.totalCount
   } catch (error) {
     console.error('Error fetching Scary Garys:', error)
@@ -92,7 +96,7 @@ async function getOwnedScaryGarys(address: string): Promise<number> {
   }
 }
 
-async function getScaryGarysImages(address: string): Promise<NFTMetadata[]> {
+async function getScaryGarysImages(address: string, page: number = 0): Promise<{ nfts: NFTMetadata[], totalCount: number }> {
   try {
     const url = `https://api.etherscan.io/api`
     const params = {
@@ -104,11 +108,11 @@ async function getScaryGarysImages(address: string): Promise<NFTMetadata[]> {
       apikey: ETHERSCAN_API_KEY
     }
 
-    const response = await axios.get(url, { params })
+    const response = await axios.get(url, { params, timeout: 5000 })
 
     if (response.data.status !== '1') {
       console.error('Error response from Etherscan:', response.data.message)
-      return []
+      return { nfts: [], totalCount: 0 }
     }
 
     const ownedTokens = response.data.result
@@ -116,19 +120,33 @@ async function getScaryGarysImages(address: string): Promise<NFTMetadata[]> {
       .map((tx: { tokenID: string }) => tx.tokenID)
 
     const uniqueTokenIds = [...new Set(ownedTokens)]
+    const totalCount = uniqueTokenIds.length
 
-    const metadataPromises = uniqueTokenIds.map(async (tokenId: unknown) => {
+    const startIndex = page * ITEMS_PER_PAGE
+    const endIndex = startIndex + ITEMS_PER_PAGE
+    const tokenIdsToFetch = uniqueTokenIds.slice(startIndex, endIndex)
+
+    const metadataPromises = tokenIdsToFetch.map(async (tokenId: unknown) => {
       if (typeof tokenId !== 'string') {
         console.error(`Invalid token ID: ${tokenId}`);
         return null;
       }
+
+      // Check cache first
+      const cachedMetadata = metadataCache.get<NFTMetadata>(tokenId)
+      if (cachedMetadata) {
+        return cachedMetadata
+      }
+
       const metadataUrl = `https://ipfs.imnotart.com/ipfs/QmbmAW6t7SSQ6q8YCnFgbWHwWBjt3q1TwMQbgmjCJCPLaH/${tokenId}`
       try {
-        const metadataResponse = await axios.get(metadataUrl)
-        return {
+        const metadataResponse = await axios.get(metadataUrl, { timeout: 5000 })
+        const metadata: NFTMetadata = {
           tokenId: tokenId,
           imageUrl: metadataResponse.data.image
         }
+        metadataCache.set(tokenId, metadata)
+        return metadata
       } catch (error) {
         console.error(`Error fetching metadata for token ${tokenId}:`, error)
         return null
@@ -136,10 +154,12 @@ async function getScaryGarysImages(address: string): Promise<NFTMetadata[]> {
     })
 
     const metadataResults = await Promise.all(metadataPromises)
-    return metadataResults.filter((result): result is NFTMetadata => result !== null)
+    const nfts = metadataResults.filter((result): result is NFTMetadata => result !== null)
+
+    return { nfts, totalCount }
   } catch (error) {
     console.error('Error fetching Scary Garys images:', error)
-    return []
+    return { nfts: [], totalCount: 0 }
   }
 }
 
@@ -204,26 +224,31 @@ app.frame('/check', async (c) => {
 
 app.frame('/view-nfts', async (c) => {
   const { fid } = c.frameData || {};
-  const currentIndex = parseInt(c.buttonValue || '0');
+  const page = parseInt(c.buttonValue || '0');
   let ownedNFTs: NFTMetadata[] = [];
+  let totalNFTs = 0;
 
   if (fid) {
     const connectedAddresses = await getConnectedAddresses(fid.toString());
     if (connectedAddresses.length > 0) {
       const address = connectedAddresses[0];
-      ownedNFTs = await getScaryGarysImages(address);
+      const result = await getScaryGarysImages(address, page);
+      ownedNFTs = result.nfts;
+      totalNFTs = result.totalCount;
     }
   }
 
-  const nftToShow = ownedNFTs[currentIndex] || null;
-  const nextIndex = (currentIndex + 1) % ownedNFTs.length;
+  const nftToShow = ownedNFTs[0] || null; // Show the first NFT of the current page
+  const nextPage = (page + 1) * ITEMS_PER_PAGE < totalNFTs ? page + 1 : 0;
+  const prevPage = page > 0 ? page - 1 : Math.floor((totalNFTs - 1) / ITEMS_PER_PAGE);
 
   return c.res({
     image: nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE,
     imageAspectRatio: '1:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
-      ...(ownedNFTs.length > 1 ? [<Button action="/view-nfts" value={nextIndex.toString()}>Next NFT</Button>] : []),
+      <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
+      <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
     ],
   })
 })
