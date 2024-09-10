@@ -56,7 +56,7 @@ async function getConnectedAddresses(fid: string): Promise<string[]> {
 
     const response = await axios.post(AIRSTACK_API_URL, 
       { query, variables },
-      { headers: { 'Authorization': AIRSTACK_API_KEY }, timeout: 5000 }
+      { headers: { 'Authorization': AIRSTACK_API_KEY }, timeout: 10000 }
     );
 
     const data = response.data;
@@ -88,7 +88,7 @@ async function getOwnedScaryGarys(address: string): Promise<number> {
   }
 
   try {
-    const response = await axios.get(url, { params, timeout: 5000 })
+    const response = await axios.get(url, { params, timeout: 10000 })
     return response.data.totalCount
   } catch (error) {
     console.error('Error fetching Scary Garys:', error)
@@ -108,57 +108,71 @@ async function getScaryGarysImages(address: string, page: number = 0): Promise<{
       apikey: ETHERSCAN_API_KEY
     }
 
-    const response = await axios.get(url, { params, timeout: 5000 })
+    console.log('Fetching token transactions from Etherscan...');
+    const response = await axios.get(url, { params, timeout: 10000 })
 
     if (response.data.status !== '1') {
       console.error('Error response from Etherscan:', response.data.message)
       return { nfts: [], totalCount: 0 }
     }
 
-    const ownedTokens = response.data.result
-      .filter((tx: { to: string; tokenID: string }) => tx.to.toLowerCase() === address.toLowerCase())
-      .map((tx: { tokenID: string }) => tx.tokenID)
+    interface EtherscanTx {
+      to: string;
+      tokenID: string;
+    }
 
-    const uniqueTokenIds = [...new Set(ownedTokens)]
+    const ownedTokens = (response.data.result as EtherscanTx[])
+      .filter(tx => tx.to.toLowerCase() === address.toLowerCase())
+      .map(tx => tx.tokenID)
+
+    const uniqueTokenIds: string[] = [...new Set(ownedTokens)]
     const totalCount = uniqueTokenIds.length
+
+    console.log(`Total unique tokens found: ${totalCount}`);
 
     const startIndex = page * ITEMS_PER_PAGE
     const endIndex = startIndex + ITEMS_PER_PAGE
-    const tokenIdsToFetch = uniqueTokenIds.slice(startIndex, endIndex)
+    const tokenIdsToFetch: string[] = uniqueTokenIds.slice(startIndex, endIndex)
 
-    const metadataPromises = tokenIdsToFetch.map(async (tokenId: unknown) => {
-      if (typeof tokenId !== 'string') {
-        console.error(`Invalid token ID: ${tokenId}`);
-        return null;
-      }
+    console.log(`Fetching metadata for tokens: ${tokenIdsToFetch.join(', ')}`);
 
+    const metadataPromises = tokenIdsToFetch.map(async (tokenId: string) => {
       // Check cache first
       const cachedMetadata = metadataCache.get<NFTMetadata>(tokenId)
       if (cachedMetadata) {
+        console.log(`Using cached metadata for token ${tokenId}`);
         return cachedMetadata
       }
 
       const metadataUrl = `https://ipfs.imnotart.com/ipfs/QmbmAW6t7SSQ6q8YCnFgbWHwWBjt3q1TwMQbgmjCJCPLaH/${tokenId}`
       try {
-        const metadataResponse = await axios.get(metadataUrl, { timeout: 5000 })
+        console.log(`Fetching metadata for token ${tokenId} from ${metadataUrl}`);
+        const metadataResponse = await axios.get(metadataUrl, { timeout: 10000 })
         const metadata: NFTMetadata = {
           tokenId: tokenId,
           imageUrl: metadataResponse.data.image
         }
+        console.log(`Successfully fetched metadata for token ${tokenId}: ${JSON.stringify(metadata)}`);
         metadataCache.set(tokenId, metadata)
         return metadata
       } catch (error) {
         console.error(`Error fetching metadata for token ${tokenId}:`, error)
-        return null
+        // Fallback to a default image URL if IPFS fails
+        return {
+          tokenId: tokenId,
+          imageUrl: `https://etherscan.io/nft/${SCARY_GARYS_ADDRESS}/${tokenId}`
+        }
       }
     })
 
     const metadataResults = await Promise.all(metadataPromises)
     const nfts = metadataResults.filter((result): result is NFTMetadata => result !== null)
 
+    console.log(`Successfully fetched ${nfts.length} NFT metadata`);
+
     return { nfts, totalCount }
   } catch (error) {
-    console.error('Error fetching Scary Garys images:', error)
+    console.error('Error in getScaryGarysImages:', error)
     return { nfts: [], totalCount: 0 }
   }
 }
@@ -227,23 +241,43 @@ app.frame('/view-nfts', async (c) => {
   const page = parseInt(c.buttonValue || '0');
   let ownedNFTs: NFTMetadata[] = [];
   let totalNFTs = 0;
+  let errorMessage = '';
 
   if (fid) {
-    const connectedAddresses = await getConnectedAddresses(fid.toString());
-    if (connectedAddresses.length > 0) {
-      const address = connectedAddresses[0];
-      const result = await getScaryGarysImages(address, page);
-      ownedNFTs = result.nfts;
-      totalNFTs = result.totalCount;
+    try {
+      const connectedAddresses = await getConnectedAddresses(fid.toString());
+      if (connectedAddresses.length > 0) {
+        const address = connectedAddresses[0];
+        console.log(`Fetching Scary Garys for address: ${address}`);
+        const result = await getScaryGarysImages(address, page);
+        ownedNFTs = result.nfts;
+        totalNFTs = result.totalCount;
+        console.log(`Fetched ${ownedNFTs.length} NFTs out of ${totalNFTs} total`);
+      } else {
+        errorMessage = 'No connected Ethereum addresses found';
+      }
+    } catch (error) {
+      console.error('Error in /view-nfts:', error);
+      errorMessage = 'Error fetching NFT data';
     }
+  } else {
+    errorMessage = 'No FID found for the user';
   }
 
-  const nftToShow = ownedNFTs[0] || null; // Show the first NFT of the current page
+  const nftToShow = ownedNFTs[0] || null;
   const nextPage = (page + 1) * ITEMS_PER_PAGE < totalNFTs ? page + 1 : 0;
   const prevPage = page > 0 ? page - 1 : Math.floor((totalNFTs - 1) / ITEMS_PER_PAGE);
 
+  let displayImage = nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE;
+  let displayText = errorMessage || `Showing NFT ${page * ITEMS_PER_PAGE + 1} of ${totalNFTs}`;
+
   return c.res({
-    image: nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE,
+    image: (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
+        <img src={displayImage} alt="NFT" style={{ maxWidth: '80%', maxHeight: '70%', objectFit: 'contain' }} />
+        <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>{displayText}</p>
+      </div>
+    ),
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
