@@ -18,7 +18,7 @@ const app = new Frog({
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
-const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmX7Py8TGVGdp3ffXb4XGfd83WwmLZ8FyQV2PEquhAFZ2P'
+const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
 const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/Qma1Evr6rzzXoCDG5kzWgD7vekUpdj5VYCdKu8VcgSjxdD'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
@@ -34,8 +34,12 @@ const scaryGarysContract = new ethers.Contract(SCARY_GARYS_ADDRESS, scaryGarysAB
 
 async function getBaseURI(): Promise<string> {
   try {
-    const tokenURI = await scaryGarysContract.tokenURI(1); // Fetch tokenURI for token ID 1
-    return tokenURI.split('/').slice(0, -1).join('/') + '/'; // Remove the token ID and add a trailing slash
+    console.log('Fetching baseURI...');
+    const tokenURI = await scaryGarysContract.tokenURI(1);
+    console.log('Fetched tokenURI:', tokenURI);
+    const baseURI = tokenURI.split('/').slice(0, -1).join('/') + '/';
+    console.log('Constructed baseURI:', baseURI);
+    return baseURI;
   } catch (error) {
     console.error('Error fetching baseURI:', error);
     return '';
@@ -89,6 +93,7 @@ async function getConnectedAddresses(fid: string): Promise<string[]> {
 }
 
 async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
+  console.log('Fetching owned Scary Garys for address:', address);
   const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
   const params = {
     owner: address,
@@ -98,11 +103,18 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
 
   try {
     const response = await axios.get(url, { params })
+    console.log('Alchemy API response:', JSON.stringify(response.data, null, 2));
     const baseURI = await getBaseURI();
-    return response.data.ownedNfts.map((nft: any) => ({
-      tokenId: nft.id.tokenId,
-      imageUrl: `${baseURI}${nft.id.tokenId}`,
-    }))
+    const nfts = response.data.ownedNfts.map((nft: any) => {
+      const imageUrl = `${baseURI}${nft.id.tokenId}`;
+      console.log(`Constructed image URL for token ${nft.id.tokenId}:`, imageUrl);
+      return {
+        tokenId: nft.id.tokenId,
+        imageUrl: imageUrl,
+      };
+    });
+    console.log('Constructed NFT metadata:', JSON.stringify(nfts, null, 2));
+    return nfts;
   } catch (error) {
     console.error('Error fetching Scary Garys:', error)
     return []
@@ -156,6 +168,9 @@ app.frame('/check', async (c) => {
   const nftAmount = ownedNFTs.length;
   const resultText = errorMessage || `You own ${nftAmount} Scary Garys NFTs.`;
 
+  console.log('Result text:', resultText);
+  console.log('Number of owned NFTs:', nftAmount);
+
   return c.res({
     image: (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
@@ -172,9 +187,13 @@ app.frame('/check', async (c) => {
 })
 
 app.frame('/view-nfts', async (c) => {
+  console.log('Entering /view-nfts frame');
   const urlParams = new URLSearchParams(c.frameData?.url?.split('?')[1] || '');
   const tokenIds = urlParams.get('tokenIds')?.split(',') || [];
   const imageUrls = urlParams.get('imageUrls')?.split(',').map(decodeURIComponent) || [];
+  console.log('Received tokenIds:', tokenIds);
+  console.log('Received imageUrls:', imageUrls);
+  
   const page = parseInt(urlParams.get('page') || '0');
   const nftsPerPage = 4;
   const startIndex = page * nftsPerPage;
@@ -183,6 +202,8 @@ app.frame('/view-nfts', async (c) => {
     tokenId,
     imageUrl: imageUrls[startIndex + index],
   }));
+
+  console.log('Current NFTs to display:', JSON.stringify(currentNFTs, null, 2));
 
   return c.res({
     image: (
