@@ -116,6 +116,29 @@ app.frame('/check', async (c) => {
   let errorMessage = '';
   let backgroundImage = BACKGROUND_IMAGE;
 
+  // Function to test image URL accessibility
+  const validateImageUrl = async (url: string): Promise<void> => {
+    try {
+      console.log(`Validating access to image URL: ${url}`);
+      const response = await axios.get(url);
+      console.log(`Image URL status code: ${response.status}`);
+    } catch (error: unknown) {
+      // Narrow down error type and handle axios error properties
+      if (axios.isAxiosError(error)) {
+        console.error(`Error accessing image URL: ${url}`, error.response?.status || error.message);
+        backgroundImage = ERROR_BACKGROUND_IMAGE;
+        errorMessage = `Unable to fetch background image. Status: ${error.response?.status || 'unknown'}`;
+      } else {
+        console.error(`Unexpected error accessing image URL: ${url}`, error);
+        errorMessage = `Unexpected error accessing image.`;
+        backgroundImage = ERROR_BACKGROUND_IMAGE;
+      }
+    }
+  };
+
+  // Validate the primary background image URL
+  await validateImageUrl(BACKGROUND_IMAGE);
+
   if (fid) {
     try {
       const connectedAddresses = await getConnectedAddresses(fid.toString());
@@ -140,14 +163,19 @@ app.frame('/check', async (c) => {
 
   const buttonText = errorMessage || `You own ${nftAmount} Scary Garys NFTs. Check again?`;
 
+  // Validate the error background image URL if needed
+  if (backgroundImage === ERROR_BACKGROUND_IMAGE) {
+    await validateImageUrl(ERROR_BACKGROUND_IMAGE);
+  }
+
   return c.res({
     image: backgroundImage,
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>
     ],
-  })
-})
+  });
+});
 
-export const GET = handle(app)
-export const POST = handle(app)
+export const GET = handle(app);
+export const POST = handle(app);
