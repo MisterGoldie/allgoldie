@@ -17,7 +17,7 @@ const app = new Frog({
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
-const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmX7Py8TGVGdp3ffXb4XGfd83WwmLZ8FyQV2PEquhAFZ2P'
+const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
 const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/Qma1Evr6rzzXoCDG5kzWgD7vekUpdj5VYCdKu8VcgSjxdD'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
@@ -112,7 +112,7 @@ app.frame('/check', async (c) => {
   console.log('Display Name:', displayName);
   console.log('Profile Picture URL:', pfpUrl);
 
-  let nftAmount = 0;
+  let ownedNFTs: NFTMetadata[] = [];
   let errorMessage = '';
   let backgroundImage = BACKGROUND_IMAGE;
 
@@ -122,8 +122,7 @@ app.frame('/check', async (c) => {
       if (connectedAddresses.length > 0) {
         const address = connectedAddresses[0]; // Use the first connected address
         console.log('Using Ethereum address:', address);
-        const ownedNFTs = await getOwnedScaryGarys(address);
-        nftAmount = ownedNFTs.length;
+        ownedNFTs = await getOwnedScaryGarys(address);
       } else {
         errorMessage = 'No connected Ethereum addresses found';
         backgroundImage = ERROR_BACKGROUND_IMAGE;
@@ -138,13 +137,56 @@ app.frame('/check', async (c) => {
     backgroundImage = ERROR_BACKGROUND_IMAGE;
   }
 
-  const buttonText = errorMessage || `You own ${nftAmount} Scary Garys NFTs. Check again?`;
+  const nftAmount = ownedNFTs.length;
+  const resultText = errorMessage || `You own ${nftAmount} Scary Garys NFTs.`;
 
   return c.res({
-    image: backgroundImage,
+    image: (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
+        <h1 style={{ color: 'white', fontSize: '40px', marginBottom: '20px' }}>Scary Garys NFT Check</h1>
+        <p style={{ color: 'white', fontSize: '24px', textAlign: 'center' }}>{resultText}</p>
+      </div>
+    ),
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">{buttonText}</Button>
+      <Button action="/check">Check Again</Button>,
+      ...(nftAmount > 0 ? [<Button action={`/view-nfts?tokenIds=${ownedNFTs.map(nft => nft.tokenId).join(',')}&imageUrls=${ownedNFTs.map(nft => encodeURIComponent(nft.imageUrl)).join(',')}`}>View Your Scary Garys</Button>] : []),
+    ],
+  })
+})
+
+app.frame('/view-nfts', async (c) => {
+  const urlParams = new URLSearchParams(c.frameData?.url?.split('?')[1] || '');
+  const tokenIds = urlParams.get('tokenIds')?.split(',') || [];
+  const imageUrls = urlParams.get('imageUrls')?.split(',').map(decodeURIComponent) || [];
+  const page = parseInt(urlParams.get('page') || '0');
+  const nftsPerPage = 4;
+  const startIndex = page * nftsPerPage;
+  const endIndex = startIndex + nftsPerPage;
+  const currentNFTs = tokenIds.slice(startIndex, endIndex).map((tokenId, index) => ({
+    tokenId,
+    imageUrl: imageUrls[startIndex + index],
+  }));
+
+  return c.res({
+    image: (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
+        <h1 style={{ color: 'white', fontSize: '40px', marginBottom: '20px' }}>Your Scary Garys</h1>
+        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
+          {currentNFTs.map((nft: NFTMetadata, index: number) => (
+            <img key={index} src={nft.imageUrl} alt={`Scary Gary #${nft.tokenId}`} style={{ width: '200px', height: '200px', objectFit: 'cover' }} />
+          ))}
+        </div>
+        <p style={{ color: 'white', fontSize: '20px', marginTop: '20px' }}>
+          Showing {startIndex + 1}-{Math.min(endIndex, tokenIds.length)} of {tokenIds.length}
+        </p>
+      </div>
+    ),
+    imageAspectRatio: '1.91:1',
+    intents: [
+      <Button action="/check">Back to Check</Button>,
+      ...(page > 0 ? [<Button action={`/view-nfts?tokenIds=${tokenIds.join(',')}&imageUrls=${imageUrls.map(encodeURIComponent).join(',')}&page=${page - 1}`}>Previous</Button>] : []),
+      ...(endIndex < tokenIds.length ? [<Button action={`/view-nfts?tokenIds=${tokenIds.join(',')}&imageUrls=${imageUrls.map(encodeURIComponent).join(',')}&page=${page + 1}`}>Next</Button>] : []),
     ],
   })
 })
