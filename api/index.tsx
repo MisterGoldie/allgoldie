@@ -16,11 +16,11 @@ const app = new Frog({
 )
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
+const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
 const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmX7Py8TGVGdp3ffXb4XGfd83WwmLZ8FyQV2PEquhAFZ2P'
 const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/Qma1Evr6rzzXoCDG5kzWgD7vekUpdj5VYCdKu8VcgSjxdD'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
-const OPENSEA_API_KEY = 'eb90d151ee88429eac31c3b6cac0aa2e'
 
 interface NFTMetadata {
   tokenId: string;
@@ -74,24 +74,21 @@ async function getConnectedAddresses(fid: string): Promise<string[]> {
 }
 
 async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
-  try {
-    const response = await axios.get(`https://api.opensea.io/api/v1/assets`, {
-      params: {
-        owner: address,
-        asset_contract_address: SCARY_GARYS_ADDRESS,
-        limit: 50, // Adjust as needed
-      },
-      headers: {
-        'X-API-KEY': OPENSEA_API_KEY
-      }
-    });
+  const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
+  const params = {
+    owner: address,
+    contractAddresses: [SCARY_GARYS_ADDRESS],
+    withMetadata: true,
+  }
 
-    return response.data.assets.map((asset: any) => ({
-      tokenId: asset.token_id,
-      imageUrl: asset.image_url || `https://etherscan.io/token/${SCARY_GARYS_ADDRESS}?a=${asset.token_id}#inventory`,
-    }));
+  try {
+    const response = await axios.get(url, { params })
+    return response.data.ownedNfts.map((nft: any) => ({
+      tokenId: nft.id.tokenId,
+      imageUrl: nft.metadata.image,
+    }))
   } catch (error) {
-    console.error('Error fetching Scary Garys from OpenSea:', error)
+    console.error('Error fetching Scary Garys:', error)
     return []
   }
 }
@@ -101,7 +98,7 @@ app.frame('/', (c) => {
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Check Scary Garys balance</Button>
+      <Button action="/check">Check Scary Garys NFTs</Button>
     ],
   })
 })
@@ -115,7 +112,7 @@ app.frame('/check', async (c) => {
   console.log('Display Name:', displayName);
   console.log('Profile Picture URL:', pfpUrl);
 
-  let ownedNFTs: NFTMetadata[] = [];
+  let nftAmount = 0;
   let errorMessage = '';
   let backgroundImage = BACKGROUND_IMAGE;
 
@@ -125,7 +122,8 @@ app.frame('/check', async (c) => {
       if (connectedAddresses.length > 0) {
         const address = connectedAddresses[0]; // Use the first connected address
         console.log('Using Ethereum address:', address);
-        ownedNFTs = await getOwnedScaryGarys(address);
+        const ownedNFTs = await getOwnedScaryGarys(address);
+        nftAmount = ownedNFTs.length;
       } else {
         errorMessage = 'No connected Ethereum addresses found';
         backgroundImage = ERROR_BACKGROUND_IMAGE;
@@ -140,45 +138,13 @@ app.frame('/check', async (c) => {
     backgroundImage = ERROR_BACKGROUND_IMAGE;
   }
 
-  const nftAmount = ownedNFTs.length;
-  const buttonText = errorMessage || `Ayee you own ${nftAmount} Scary Garys!`;
+  const buttonText = errorMessage || `You own ${nftAmount} Scary Garys NFTs. Check again?`;
 
   return c.res({
     image: backgroundImage,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action={`/view-nfts?nfts=${encodeURIComponent(JSON.stringify(ownedNFTs))}`}>View Your Scary Garys</Button>] : []),
-    ],
-  })
-})
-
-app.frame('/view-nfts', async (c) => {
-  const urlParams = new URLSearchParams(c.frameData?.url?.split('?')[1] || '');
-  const nftsParam = urlParams.get('nfts');
-  const nfts: NFTMetadata[] = nftsParam ? JSON.parse(decodeURIComponent(nftsParam)) : [];
-  const page = parseInt(urlParams.get('page') || '0');
-  const nftsPerPage = 4;
-  const startIndex = page * nftsPerPage;
-  const endIndex = startIndex + nftsPerPage;
-  const currentNFTs = nfts.slice(startIndex, endIndex);
-
-  const totalNFTs = nfts.length;
-  const currentPageInfo = `Showing ${startIndex + 1}-${Math.min(endIndex, totalNFTs)} of ${totalNFTs}`;
-
-  const nftButtons = currentNFTs.map((nft) => (
-    <Button action={nft.imageUrl}>View NFT #{nft.tokenId}</Button>
-  ));
-
-  return c.res({
-    image: BACKGROUND_IMAGE,
-    imageAspectRatio: '1.91:1',
-    intents: [
-      <Button action="/check">Back to Check</Button>,
-      ...nftButtons,
-      <Button action="/view-nfts">{currentPageInfo}</Button>,
-      ...(page > 0 ? [<Button action={`/view-nfts?nfts=${encodeURIComponent(JSON.stringify(nfts))}&page=${page - 1}`}>Previous</Button>] : []),
-      ...(endIndex < nfts.length ? [<Button action={`/view-nfts?nfts=${encodeURIComponent(JSON.stringify(nfts))}&page=${page + 1}`}>Next</Button>] : []),
+      <Button action="/check">{buttonText}</Button>
     ],
   })
 })
