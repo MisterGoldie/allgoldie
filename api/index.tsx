@@ -26,7 +26,7 @@ const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 const ETHERSCAN_API_KEY = 'ZUGFEPG5A713UMRZKQA9MQVNGRHPQIHMU7'
 
 const metadataCache = new NodeCache({ stdTTL: 600 }) // Cache for 10 minutes
-const ITEMS_PER_PAGE = 5 // Number of NFTs to fetch per page
+const ITEMS_PER_PAGE = 1 // Number of NFTs to fetch per page
 
 interface NFTMetadata {
   tokenId: string;
