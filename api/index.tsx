@@ -88,7 +88,7 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
 
     return response.data.assets.map((asset: any) => ({
       tokenId: asset.token_id,
-      imageUrl: asset.image_url,
+      imageUrl: asset.image_url || `https://etherscan.io/token/${SCARY_GARYS_ADDRESS}?a=${asset.token_id}#inventory`,
     }));
   } catch (error) {
     console.error('Error fetching Scary Garys from OpenSea:', error)
@@ -148,46 +148,47 @@ app.frame('/check', async (c) => {
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action={`/view-nfts?tokenIds=${ownedNFTs.map(nft => nft.tokenId).join(',')}&imageUrls=${ownedNFTs.map(nft => encodeURIComponent(nft.imageUrl)).join(',')}`}>View Your Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action={`/view-nfts?nfts=${encodeURIComponent(JSON.stringify(ownedNFTs))}`}>View Your Scary Garys</Button>] : []),
     ],
   })
 })
 
+// ... (previous code remains the same)
+
 app.frame('/view-nfts', async (c) => {
   const urlParams = new URLSearchParams(c.frameData?.url?.split('?')[1] || '');
-  const tokenIds = urlParams.get('tokenIds')?.split(',') || [];
-  const imageUrls = urlParams.get('imageUrls')?.split(',').map(decodeURIComponent) || [];
+  const nftsParam = urlParams.get('nfts');
+  const nfts: NFTMetadata[] = nftsParam ? JSON.parse(decodeURIComponent(nftsParam)) : [];
   const page = parseInt(urlParams.get('page') || '0');
   const nftsPerPage = 4;
   const startIndex = page * nftsPerPage;
   const endIndex = startIndex + nftsPerPage;
-  const currentNFTs = tokenIds.slice(startIndex, endIndex).map((tokenId, index) => ({
-    tokenId,
-    imageUrl: imageUrls[startIndex + index],
-  }));
+  const currentNFTs = nfts.slice(startIndex, endIndex);
 
   return c.res({
     image: (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
         <h1 style={{ color: 'white', fontSize: '40px', marginBottom: '20px' }}>Your Scary Garys</h1>
         <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          {currentNFTs.map((nft: NFTMetadata, index: number) => (
+          {currentNFTs.map((nft, index) => (
             <img key={index} src={nft.imageUrl} alt={`Scary Gary #${nft.tokenId}`} style={{ width: '200px', height: '200px', objectFit: 'cover' }} />
           ))}
         </div>
         <p style={{ color: 'white', fontSize: '20px', marginTop: '20px' }}>
-          Showing {startIndex + 1}-{Math.min(endIndex, tokenIds.length)} of {tokenIds.length}
+          Showing {startIndex + 1}-{Math.min(endIndex, nfts.length)} of {nfts.length}
         </p>
       </div>
     ),
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
-      ...(page > 0 ? [<Button action={`/view-nfts?tokenIds=${tokenIds.join(',')}&imageUrls=${imageUrls.map(encodeURIComponent).join(',')}&page=${page - 1}`}>Previous</Button>] : []),
-      ...(endIndex < tokenIds.length ? [<Button action={`/view-nfts?tokenIds=${tokenIds.join(',')}&imageUrls=${imageUrls.map(encodeURIComponent).join(',')}&page=${page + 1}`}>Next</Button>] : []),
+      ...(page > 0 ? [<Button action={`/view-nfts?nfts=${encodeURIComponent(JSON.stringify(nfts))}&page=${page - 1}`}>Previous</Button>] : []),
+      ...(endIndex < nfts.length ? [<Button action={`/view-nfts?nfts=${encodeURIComponent(JSON.stringify(nfts))}&page=${page + 1}`}>Next</Button>] : []),
     ],
   })
 })
+
+// ... (rest of the code remains the same)
 
 export const GET = handle(app)
 export const POST = handle(app)
