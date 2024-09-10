@@ -191,7 +191,7 @@ app.frame('/view-nfts', async (c) => {
 
   return c.res({
     image: nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE,
-    imageAspectRatio: '1:1',
+    imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
       ...(ownedNFTs.length > 1 ? [<Button action="/view-nfts">Next NFT</Button>] : []),
