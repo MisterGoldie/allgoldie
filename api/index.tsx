@@ -4,16 +4,27 @@ import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
 import axios from 'axios'
 
+// Add a simple logging function
+const log = (message: string, data?: any) => {
+  console.log(`[${new Date().toISOString()}] ${message}`, data ? JSON.stringify(data, null, 2) : '');
+};
+
 const app = new Frog({
   basePath: '/api',
   imageOptions: { width: 1200, height: 630 },
   title: 'Scary Garys NFT Checker',
-}).use(
+})
+
+log('Frog app initialized', { basePath: '/api', title: 'Scary Garys NFT Checker' });
+
+app.use(
   neynar({
     apiKey: 'NEYNAR_FROG_FM',
     features: ['interactor', 'cast'],
   })
 )
+
+log('Neynar middleware added to Frog app');
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
@@ -22,13 +33,15 @@ const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cl
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 
+log('Constants initialized', { SCARY_GARYS_ADDRESS, BACKGROUND_IMAGE, ERROR_BACKGROUND_IMAGE, AIRSTACK_API_URL });
+
 interface NFTMetadata {
   tokenId: string;
   imageUrl: string;
 }
 
 async function getConnectedAddresses(fid: string): Promise<string[]> {
-  console.log('Attempting to fetch connected addresses for FID:', fid);
+  log('Fetching connected addresses for FID', { fid });
   try {
     const query = `
       query ConnectedWalletWithFID($fid: String!) {
@@ -48,16 +61,17 @@ async function getConnectedAddresses(fid: string): Promise<string[]> {
 
     const variables = { fid };
 
+    log('Sending request to Airstack API', { query, variables });
     const response = await axios.post(AIRSTACK_API_URL, 
       { query, variables },
       { headers: { 'Authorization': AIRSTACK_API_KEY } }
     );
 
     const data = response.data;
-    console.log('Full Airstack API response:', JSON.stringify(data, null, 2));
+    log('Received response from Airstack API', data);
 
     if (!data.data || !data.data.Socials || !data.data.Socials.Social) {
-      console.error('Unexpected response structure from Airstack API');
+      log('Unexpected response structure from Airstack API', data);
       return [];
     }
 
@@ -65,15 +79,16 @@ async function getConnectedAddresses(fid: string): Promise<string[]> {
       social.connectedAddresses.map((addr: any) => addr.address)
     );
 
-    console.log('Connected addresses:', addresses);
+    log('Extracted connected addresses', { addresses });
     return addresses;
   } catch (error) {
-    console.error('Error in getConnectedAddresses:', error);
+    log('Error in getConnectedAddresses', error);
     return [];
   }
 }
 
 async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
+  log('Fetching owned Scary Garys for address', { address });
   const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
   const params = {
     owner: address,
@@ -82,71 +97,84 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
   }
 
   try {
+    log('Sending request to Alchemy API', { url, params });
     const response = await axios.get(url, { params })
-    return response.data.ownedNfts.map((nft: any) => ({
+    log('Received response from Alchemy API', response.data);
+    
+    const ownedNfts = response.data.ownedNfts.map((nft: any) => ({
       tokenId: nft.id.tokenId,
       imageUrl: nft.metadata.image,
-    }))
+    }));
+    log('Extracted owned NFTs', { ownedNfts });
+    return ownedNfts;
   } catch (error) {
-    console.error('Error fetching Scary Garys:', error)
+    log('Error fetching Scary Garys', error);
     return []
   }
 }
 
 app.frame('/', (c) => {
-  return c.res({
+  log('Rendering initial frame');
+  const response = c.res({
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">Check Scary Garys NFTs</Button>
     ],
-  })
+  });
+  log('Initial frame response', response);
+  return response;
 })
 
 app.frame('/check', async (c) => {
-  console.log('Full frameData:', JSON.stringify(c.frameData, null, 2));
+  log('Processing /check frame', { frameData: c.frameData });
   const { fid } = c.frameData || {};
-  const { displayName, pfpUrl } = c.var.interactor || {};
 
-  console.log('FID:', fid);
-  console.log('Display Name:', displayName);
-  console.log('Profile Picture URL:', pfpUrl);
+  // Safely access potential user data
+  const userInfo = (c.var as any).interactor || {};
+  const { displayName, pfpUrl } = userInfo;
+
+  log('Extracted user data', { fid, displayName, pfpUrl });
 
   let nftAmount = 0;
   let errorMessage = '';
-  let backgroundImage = BACKGROUND_IMAGE;
 
   if (fid) {
     try {
+      log('Fetching connected addresses');
       const connectedAddresses = await getConnectedAddresses(fid.toString());
       if (connectedAddresses.length > 0) {
-        const address = connectedAddresses[0]; // Use the first connected address
-        console.log('Using Ethereum address:', address);
+        const address = connectedAddresses[0];
+        log('Using Ethereum address', { address });
         const ownedNFTs = await getOwnedScaryGarys(address);
         nftAmount = ownedNFTs.length;
+        log('Fetched owned NFTs', { nftAmount });
       } else {
         errorMessage = 'No connected Ethereum addresses found';
-        backgroundImage = ERROR_BACKGROUND_IMAGE;
+        log('No connected addresses found');
       }
     } catch (error) {
-      console.error('Error checking NFTs:', error);
+      log('Error checking NFTs', error);
       errorMessage = 'Error checking NFTs';
-      backgroundImage = ERROR_BACKGROUND_IMAGE;
     }
   } else {
     errorMessage = 'No FID found for the user';
-    backgroundImage = ERROR_BACKGROUND_IMAGE;
+    log('No FID found for the user');
   }
 
   const buttonText = errorMessage || `You own ${nftAmount} Scary Garys NFTs. Check again?`;
+  const imageToUse = errorMessage ? ERROR_BACKGROUND_IMAGE : BACKGROUND_IMAGE;
+  log('Selected image for frame', { imageToUse, errorMessage, nftAmount });
 
-  return c.res({
-    image: backgroundImage,
+  const response = c.res({
+    image: imageToUse,
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>
     ],
-  })
+  });
+  log('Frame response', response);
+  return response;
 })
 
 export const GET = handle(app)
