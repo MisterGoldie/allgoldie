@@ -22,7 +22,7 @@ const ERROR_BACKGROUND_IMAGE = 'https://bafybeifa7k5ei2wu6vk464axt2xysxw75fos52w
 const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7zppi5jpfwqhtzceq.ipfs.w3s.link/Thumbnail%20(30).png'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
-const OPENSEA_API_KEY = 'eb90d151ee88429eac31c3b6cac0aa2e'
+const ETHERSCAN_API_KEY = 'ZUGFEPG5A713UMRZKQA9MQVNGRHPQIHMU7'
 
 interface NFTMetadata {
   tokenId: string;
@@ -94,23 +94,37 @@ async function getOwnedScaryGarys(address: string): Promise<number> {
 
 async function getScaryGarysImages(address: string): Promise<NFTMetadata[]> {
   try {
-    const response = await axios.get(`https://api.opensea.io/api/v1/assets`, {
-      params: {
-        owner: address,
-        asset_contract_address: SCARY_GARYS_ADDRESS,
-        limit: 50, // Adjust as needed
-      },
-      headers: {
-        'X-API-KEY': OPENSEA_API_KEY
-      }
-    });
+    const url = `https://api.etherscan.io/api`
+    const params = {
+      module: 'account',
+      action: 'tokennfttx',
+      contractaddress: SCARY_GARYS_ADDRESS,
+      address: address,
+      sort: 'asc',
+      apikey: ETHERSCAN_API_KEY
+    }
 
-    return response.data.assets.map((asset: any) => ({
-      tokenId: asset.token_id,
-      imageUrl: asset.image_url,
-    }));
+    const response = await axios.get(url, { params })
+
+    if (response.data.status === '1') {
+      const ownedTokens = response.data.result
+        .filter((tx: { to: string; tokenID: string }) => tx.to.toLowerCase() === address.toLowerCase())
+        .map((tx: { tokenID: string }) => tx.tokenID)
+
+      // Remove duplicates
+      const uniqueTokenIds = [...new Set(ownedTokens)]
+
+      // Construct image URLs based on Scary Garys metadata structure
+      return uniqueTokenIds.map((tokenId: string) => ({
+        tokenId: tokenId,
+        imageUrl: `https://ipfs.imnotart.com/ipfs/QmRR17CPhVrNkHKQkDg7QBR3Kj1Kt3VHuZQaHUbEbG989i/${tokenId}.png`
+      }))
+    } else {
+      console.error('Error response from Etherscan:', response.data.message)
+      return []
+    }
   } catch (error) {
-    console.error('Error fetching Scary Garys images from OpenSea:', error)
+    console.error('Error fetching Scary Garys images from Etherscan:', error)
     return []
   }
 }
@@ -191,7 +205,7 @@ app.frame('/view-nfts', async (c) => {
 
   return c.res({
     image: nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE,
-    imageAspectRatio: '1.91:1',
+    imageAspectRatio: '1:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
       ...(ownedNFTs.length > 1 ? [<Button action="/view-nfts">Next NFT</Button>] : []),
