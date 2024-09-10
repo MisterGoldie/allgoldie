@@ -1,114 +1,47 @@
 import { Frog } from 'frog'
-import { neynar } from 'frog/hubs'
 import { ethers } from 'ethers'
-
-// Initialize ethers provider
-const provider = new ethers.JsonRpcProvider(process.env.ETHEREUM_RPC_URL)
 
 const app = new Frog({
   basePath: '/api',
-  hub: neynar({ apiKey: process.env.NEYNAR_API_KEY as string }),
-  title: 'NFT Ownership Check',
+  title: 'Scary Garys NFT Checker',
 })
 
-const NFT_CONTRACT_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
+const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC' // Ethereum
+const IPFS_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
 
-const checkNFTOwnership = async (address: string): Promise<boolean> => {
-  try {
-    const abi = ['function balanceOf(address owner) view returns (uint256)']
-    const contract = new ethers.Contract(NFT_CONTRACT_ADDRESS, abi, provider)
-    const balance = await contract.balanceOf(address)
-    return balance.gt(0)
-  } catch (error) {
-    console.error('Error checking NFT ownership:', error)
-    return false
-  }
+const ETHEREUM_RPC_URL = 'https://eth-mainnet.g.alchemy.com/v2/pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
+
+const ethereumProvider = new ethers.JsonRpcProvider(ETHEREUM_RPC_URL)
+
+const ERC721_ABI = ['function balanceOf(address owner) view returns (uint256)']
+
+async function getScaryGarysAmount(address: string): Promise<string> {
+  const contract = new ethers.Contract(SCARY_GARYS_ADDRESS, ERC721_ABI, ethereumProvider)
+  const balance = await contract.balanceOf(address)
+  return balance.toString()
 }
 
-app.frame('/', (c) => {
-  const { buttonValue } = c
-
-  let text = 'Welcome! Click to check your NFT ownership.'
-  let buttonText = 'Check Ownership'
-
-  if (buttonValue === 'check') {
-    text = 'Checking ownership...'
-    buttonText = 'Checking...'
-  }
-
-  return c.res({
-    image: createImage(text),
-    intents: [
-      <button onClick={() => console.log('Check ownership clicked')}>
-        {buttonText}
-      </button>
-    ],
-  })
-})
-
-app.frame('/result', async (c) => {
-  const userAddress = c.frameData?.fid 
-    ? await getUserAddressFromFid(c.frameData.fid) 
-    : null
-  
-  let text = 'Unable to check ownership.'
-  let buttonText = 'Try Again'
-  let buttonAction = () => console.log('Try again clicked')
-  let buttonProps = {}
+app.frame('/', async (c) => {
+  let nftAmount = '0'
+  const userAddress = c.frameData?.address
 
   if (userAddress) {
-    const ownsNFT = await checkNFTOwnership(userAddress)
-    if (ownsNFT) {
-      text = 'Congratulations! You own the NFT.'
-      buttonText = 'Share Ownership'
-      buttonAction = () => console.log('Share ownership clicked')
-    } else {
-      text = 'Sorry, you don\'t own the NFT.'
-      buttonText = 'Buy NFT'
-      buttonAction = () => console.log('Buy NFT clicked')
-      buttonProps = { href: `https://opensea.io/assets/ethereum/${NFT_CONTRACT_ADDRESS}` }
+    try {
+      nftAmount = await getScaryGarysAmount(userAddress)
+    } catch (error) {
+      console.error('Error fetching Scary Garys amount:', error)
     }
   }
 
   return c.res({
-    image: createImage(text),
+    image: IPFS_IMAGE_URL,
     intents: [
-      <button onClick={buttonAction} {...buttonProps}>
-        {buttonText}
+      <button onClick={() => console.log('Button clicked')}>
+        You own {nftAmount} Scary Garys NFTs
       </button>
     ],
   })
 })
-
-function createImage(text: string) {
-  return (
-    <div
-      style={{
-        width: '100%',
-        height: '100%',
-        backgroundColor: 'blue',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        color: 'white',
-        fontSize: '24px',
-        textAlign: 'center',
-        padding: '20px',
-      }}
-    >
-      {text}
-    </div>
-  )
-}
-
-async function getUserAddressFromFid(fid: number): Promise<string | null> {
-  // Implement this function to get the user's address from their FID
-  // You might need to use the Neynar API or another method
-  // For now, we'll return null
-  console.log(`Getting address for FID: ${fid}`)
-  return null
-}
 
 export const GET = app.fetch
 export const POST = app.fetch
