@@ -8,7 +8,6 @@ const app = new Frog({
 })
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC' // Ethereum
-const IPFS_IMAGE_URL = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
 const CONTRACT_URI = 'https://ipfs.imnotart.com/ipfs/QmTZ3PyPH3Nnby2R58uVpaDcm5ahSnqmo2h4QoMm39NybX'
 
 const ETHEREUM_RPC_URL = 'https://eth-mainnet.g.alchemy.com/v2/pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
@@ -69,6 +68,23 @@ async function fetchIPFSMetadata(tokenId: string): Promise<any> {
   return response.data
 }
 
+function generateHtmlImage(nftAmount: number, tokenIds: string): string {
+  return `
+    <svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
+      <rect width="600" height="400" fill="#4a5568"/>
+      <text x="300" y="100" font-family="Arial" font-size="36" fill="white" text-anchor="middle">
+        Scary Garys NFT Checker
+      </text>
+      <text x="300" y="200" font-family="Arial" font-size="24" fill="white" text-anchor="middle">
+        You own ${nftAmount} Scary Garys NFTs
+      </text>
+      <text x="300" y="250" font-family="Arial" font-size="18" fill="white" text-anchor="middle">
+        ${nftAmount > 0 ? `Token IDs: ${tokenIds}` : ''}
+      </text>
+    </svg>
+  `
+}
+
 app.frame('/', async (c) => {
   const userAddress = c.frameData?.address
 
@@ -82,16 +98,16 @@ app.frame('/', async (c) => {
   }
 
   const nftAmount = ownedNFTs.length
-
-  // Create a string of token IDs
   const tokenIds = ownedNFTs.map(nft => nft.tokenId).join(', ')
 
+  const svgImage = generateHtmlImage(nftAmount, tokenIds)
+  const svgBase64 = Buffer.from(svgImage).toString('base64')
+
   return c.res({
-    image: IPFS_IMAGE_URL,
+    image: `data:image/svg+xml;base64,${svgBase64}`,
     intents: [
       <button>
-        You own {nftAmount} Scary Garys NFTs
-        {nftAmount > 0 ? ` (Token IDs: ${tokenIds})` : ''}
+        Refresh NFT Count
       </button>
     ],
   })
