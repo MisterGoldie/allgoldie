@@ -129,7 +129,6 @@ app.frame('/check', async (c) => {
 
   let nftAmount = 0;
   let errorMessage = '';
-  let backgroundImage = BACKGROUND_IMAGE;
 
   if (fid) {
     try {
@@ -143,25 +142,23 @@ app.frame('/check', async (c) => {
         log('Fetched owned NFTs', { nftAmount });
       } else {
         errorMessage = 'No connected Ethereum addresses found';
-        backgroundImage = ERROR_BACKGROUND_IMAGE;
         log('No connected addresses found');
       }
     } catch (error) {
       log('Error checking NFTs', error);
       errorMessage = 'Error checking NFTs';
-      backgroundImage = ERROR_BACKGROUND_IMAGE;
     }
   } else {
     errorMessage = 'No FID found for the user';
-    backgroundImage = ERROR_BACKGROUND_IMAGE;
     log('No FID found for the user');
   }
 
   const buttonText = errorMessage || `You own ${nftAmount} Scary Garys NFTs. Check again?`;
-  log('Rendering response frame', { backgroundImage, buttonText });
+  const imageToUse = errorMessage ? ERROR_BACKGROUND_IMAGE : BACKGROUND_IMAGE;
+  log('Rendering response frame', { imageToUse, buttonText });
 
   return c.res({
-    image: backgroundImage,
+    image: imageToUse,
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>
