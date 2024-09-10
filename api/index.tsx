@@ -176,9 +176,43 @@ app.frame('/view-nfts', async (c) => {
 
   return c.res({
     image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
-        <img src={displayImage} alt="NFT" style={{ maxWidth: '80%', maxHeight: '70%', objectFit: 'contain' }} />
-        <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>{displayText}</p>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100%',
+          backgroundImage: `url(${BACKGROUND_IMAGE})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'rgba(30, 30, 30, 0.8)',
+            padding: '20px',
+            borderRadius: '10px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <img
+            src={displayImage}
+            alt="NFT"
+            style={{
+              width: '300px',
+              height: '300px',
+              objectFit: 'contain',
+              borderRadius: '5px',
+            }}
+          />
+          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
+            {displayText}
+          </p>
+        </div>
       </div>
     ),
     imageAspectRatio: '1.91:1',
