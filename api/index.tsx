@@ -16,12 +16,12 @@ const app = new Frog({
 )
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
-const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
 const BACKGROUND_IMAGE = 'https://bafybeichmmtimnjxzhtwedhxwgjyrusqes7zie4glvbdnx6r7clvvc77ne.ipfs.w3s.link/Thumbnail%20(28).png'
 const ERROR_BACKGROUND_IMAGE = 'https://bafybeifa7k5ei2wu6vk464axt2xysxw75fos52w765favoho63fig23sja.ipfs.w3s.link/Group%2048087.png'
 const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7zppi5jpfwqhtzceq.ipfs.w3s.link/Thumbnail%20(30).png'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
+const OPENSEA_API_KEY = 'eb90d151ee88429eac31c3b6cac0aa2e'
 
 interface NFTMetadata {
   tokenId: string;
@@ -75,21 +75,24 @@ async function getConnectedAddresses(fid: string): Promise<string[]> {
 }
 
 async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
-  const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
-  const params = {
-    owner: address,
-    contractAddresses: [SCARY_GARYS_ADDRESS],
-    withMetadata: true,
-  }
-
   try {
-    const response = await axios.get(url, { params })
-    return response.data.ownedNfts.map((nft: any) => ({
-      tokenId: nft.id.tokenId,
-      imageUrl: nft.metadata.image,
-    }))
+    const response = await axios.get(`https://api.opensea.io/api/v1/assets`, {
+      params: {
+        owner: address,
+        asset_contract_address: SCARY_GARYS_ADDRESS,
+        limit: 50, // Adjust as needed
+      },
+      headers: {
+        'X-API-KEY': OPENSEA_API_KEY
+      }
+    });
+
+    return response.data.assets.map((asset: any) => ({
+      tokenId: asset.token_id,
+      imageUrl: asset.image_url,
+    }));
   } catch (error) {
-    console.error('Error fetching Scary Garys:', error)
+    console.error('Error fetching Scary Garys from OpenSea:', error)
     return []
   }
 }
@@ -113,7 +116,7 @@ app.frame('/check', async (c) => {
   console.log('Display Name:', displayName);
   console.log('Profile Picture URL:', pfpUrl);
 
-  let nftAmount = 0;
+  let ownedNFTs: NFTMetadata[] = [];
   let errorMessage = '';
   let backgroundImage = BACKGROUND_IMAGE;
 
@@ -123,10 +126,9 @@ app.frame('/check', async (c) => {
       if (connectedAddresses.length > 0) {
         const address = connectedAddresses[0]; // Use the first connected address
         console.log('Using Ethereum address:', address);
-        const ownedNFTs = await getOwnedScaryGarys(address);
-        nftAmount = ownedNFTs.length;
-        if (nftAmount > 0) {
-          backgroundImage = CONFIRMATION_IMAGE; // Use the confirmation image if user owns Scary Garys
+        ownedNFTs = await getOwnedScaryGarys(address);
+        if (ownedNFTs.length > 0) {
+          backgroundImage = CONFIRMATION_IMAGE;
         }
       } else {
         errorMessage = 'No connected Ethereum addresses found';
@@ -142,13 +144,39 @@ app.frame('/check', async (c) => {
     backgroundImage = ERROR_BACKGROUND_IMAGE;
   }
 
-  const buttonText = errorMessage || `Ayeee you own ${nftAmount} Scary Garys!`;
+  const buttonText = errorMessage || `Ayeee you own ${ownedNFTs.length} Scary Garys!`;
 
   return c.res({
     image: backgroundImage,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">{buttonText}</Button>
+      <Button action="/check">{buttonText}</Button>,
+      ...(ownedNFTs.length > 0 ? [<Button action="/view-nfts">View Your Scary Garys</Button>] : []),
+    ],
+  })
+})
+
+app.frame('/view-nfts', async (c) => {
+  const { fid } = c.frameData || {};
+  let ownedNFTs: NFTMetadata[] = [];
+
+  if (fid) {
+    const connectedAddresses = await getConnectedAddresses(fid.toString());
+    if (connectedAddresses.length > 0) {
+      const address = connectedAddresses[0];
+      ownedNFTs = await getOwnedScaryGarys(address);
+    }
+  }
+
+  // For simplicity, we'll just show the first NFT if available
+  const nftToShow = ownedNFTs[0];
+
+  return c.res({
+    image: nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE,
+    imageAspectRatio: '1:1',
+    intents: [
+      <Button action="/check">Back to Check</Button>,
+      ...(ownedNFTs.length > 1 ? [<Button action="/view-nfts">Next NFT</Button>] : []),
     ],
   })
 })
