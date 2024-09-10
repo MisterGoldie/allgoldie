@@ -18,7 +18,7 @@ const app = new Frog({
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
 const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmX7Py8TGVGdp3ffXb4XGfd83WwmLZ8FyQV2PEquhAFZ2P'
-const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmQDfE5kgzdyRLSMgnH33jeU37LtHTsePxL7fE23RELnTs'
+const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/Qma1Evr6rzzXoCDG5kzWgD7vekUpdj5VYCdKu8VcgSjxdD'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 
@@ -116,6 +116,32 @@ app.frame('/check', async (c) => {
   let errorMessage = '';
   let backgroundImage = BACKGROUND_IMAGE;
 
+  // Function to test image URL accessibility with enhanced logging
+  const validateImageUrl = async (url: string): Promise<void> => {
+    try {
+      console.log(`Validating access to image URL: ${url}`);
+      const response = await axios.get(url, { validateStatus: () => true }); // Allow any status for logging purposes
+      console.log(`Image URL response status: ${response.status}, Headers: ${JSON.stringify(response.headers)}`);
+      if (response.status !== 200) {
+        throw new Error(`Received non-200 status code: ${response.status}`);
+      }
+    } catch (error: unknown) {
+      // Handle Axios-specific errors to understand the nature of the access issue
+      if (axios.isAxiosError(error)) {
+        console.error(`Axios error accessing image URL: ${url}`, error.response?.status || error.message, error.response?.headers);
+        backgroundImage = ERROR_BACKGROUND_IMAGE;
+        errorMessage = `Unable to fetch background image. Status: ${error.response?.status || 'unknown'}`;
+      } else {
+        console.error(`Unexpected error accessing image URL: ${url}`, error);
+        errorMessage = `Unexpected error accessing image.`;
+        backgroundImage = ERROR_BACKGROUND_IMAGE;
+      }
+    }
+  };
+
+  // Validate the primary background image URL
+  await validateImageUrl(BACKGROUND_IMAGE);
+
   if (fid) {
     try {
       const connectedAddresses = await getConnectedAddresses(fid.toString());
@@ -140,14 +166,19 @@ app.frame('/check', async (c) => {
 
   const buttonText = errorMessage || `You own ${nftAmount} Scary Garys NFTs. Check again?`;
 
+  // Validate the error background image URL if it's used
+  if (backgroundImage === ERROR_BACKGROUND_IMAGE) {
+    await validateImageUrl(ERROR_BACKGROUND_IMAGE);
+  }
+
   return c.res({
     image: backgroundImage,
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>
     ],
-  })
-})
+  });
+});
 
-export const GET = handle(app)
-export const POST = handle(app)
+export const GET = handle(app);
+export const POST = handle(app);
