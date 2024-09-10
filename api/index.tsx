@@ -17,7 +17,7 @@ const app = new Frog({
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
-const BACKGROUND_IMAGE = 'https://ipfs.io/ipfs/bafybeifeeivouhaesyuqnb3znap2ehfeu2kirca2x7myn4u5fabhhys44m/Testframe.png'
+const BACKGROUND_IMAGE = 'https://d391b93f5f62d9c15f67142e43841acc.ipfscdn.io/ipfs/bafybeieckp3ncqm7qwgvbzcu4j4wqrbrwiywsmzhwu5x42muuthr5zvdsa/'
 const ERROR_BACKGROUND_IMAGE = 'https://ipfs.io/ipfs/bafybeifeeivouhaesyuqnb3znap2ehfeu2kirca2x7myn4u5fabhhys44m/Testframe.png'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
