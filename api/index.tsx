@@ -1,5 +1,6 @@
-import { Frog } from 'frog'
-import { ethers } from 'ethers'
+/** @jsxImportSource frog/jsx */
+import { Button, Frog } from 'frog'
+import { handle } from 'frog/next'
 import axios from 'axios'
 
 const app = new Frog({
@@ -7,82 +8,32 @@ const app = new Frog({
   title: 'Scary Garys NFT Checker',
 })
 
-const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC' // Ethereum
-const CONTRACT_URI = 'https://ipfs.imnotart.com/ipfs/QmTZ3PyPH3Nnby2R58uVpaDcm5ahSnqmo2h4QoMm39NybX'
-
-const ETHEREUM_RPC_URL = 'https://eth-mainnet.g.alchemy.com/v2/pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
+const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
-
-const ethereumProvider = new ethers.JsonRpcProvider(ETHEREUM_RPC_URL)
 
 interface NFTMetadata {
   tokenId: string;
   imageUrl: string;
 }
 
-const ERC721_ABI = [
-  'function balanceOf(address owner) view returns (uint256)',
-  'function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)',
-]
-
 async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
-  try {
-    const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
-    const params = {
-      owner: address,
-      contractAddresses: [SCARY_GARYS_ADDRESS],
-      withMetadata: true,
-    }
+  const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
+  const params = {
+    owner: address,
+    contractAddresses: [SCARY_GARYS_ADDRESS],
+    withMetadata: true,
+  }
 
+  try {
     const response = await axios.get(url, { params })
     return response.data.ownedNfts.map((nft: any) => ({
       tokenId: nft.id.tokenId,
       imageUrl: nft.metadata.image,
     }))
   } catch (error) {
-    console.error('Error fetching from Alchemy API, falling back to contract calls:', error)
-    return getOwnedScaryGarysFallback(address)
+    console.error('Error fetching Scary Garys:', error)
+    return []
   }
-}
-
-async function getOwnedScaryGarysFallback(address: string): Promise<NFTMetadata[]> {
-  const contract = new ethers.Contract(SCARY_GARYS_ADDRESS, ERC721_ABI, ethereumProvider)
-  const balance = await contract.balanceOf(address)
-  const ownedNFTs: NFTMetadata[] = []
-
-  for (let i = 0; i < balance; i++) {
-    const tokenId = await contract.tokenOfOwnerByIndex(address, i)
-    const metadata = await fetchIPFSMetadata(tokenId.toString())
-    ownedNFTs.push({
-      tokenId: tokenId.toString(),
-      imageUrl: metadata.image,
-    })
-  }
-
-  return ownedNFTs
-}
-
-async function fetchIPFSMetadata(tokenId: string): Promise<any> {
-  const metadataUrl = `${CONTRACT_URI}/${tokenId}`
-  const response = await axios.get(metadataUrl)
-  return response.data
-}
-
-function generateHtmlImage(nftAmount: number, tokenIds: string): string {
-  return `
-    <svg width="600" height="400" xmlns="http://www.w3.org/2000/svg">
-      <rect width="600" height="400" fill="#4a5568"/>
-      <text x="300" y="100" font-family="Arial" font-size="36" fill="white" text-anchor="middle">
-        Scary Garys NFT Checker
-      </text>
-      <text x="300" y="200" font-family="Arial" font-size="24" fill="white" text-anchor="middle">
-        You own ${nftAmount} Scary Garys NFTs
-      </text>
-      <text x="300" y="250" font-family="Arial" font-size="18" fill="white" text-anchor="middle">
-        ${nftAmount > 0 ? `Token IDs: ${tokenIds}` : ''}
-      </text>
-    </svg>
-  `
 }
 
 app.frame('/', async (c) => {
@@ -100,18 +51,81 @@ app.frame('/', async (c) => {
   const nftAmount = ownedNFTs.length
   const tokenIds = ownedNFTs.map(nft => nft.tokenId).join(', ')
 
-  const svgImage = generateHtmlImage(nftAmount, tokenIds)
-  const svgBase64 = Buffer.from(svgImage).toString('base64')
-
   return c.res({
-    image: `data:image/svg+xml;base64,${svgBase64}`,
+    image: (
+      <div
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          overflow: 'hidden',
+          backgroundColor: '#4a5568',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              color: 'white',
+              fontSize: '36px',
+              fontWeight: 'bold',
+              fontFamily: 'Arial, Helvetica, sans-serif',
+              textAlign: 'center',
+              marginBottom: '20px',
+            }}
+          >
+            Scary Garys NFT Checker
+          </div>
+          <div
+            style={{
+              color: 'white',
+              fontSize: '24px',
+              fontFamily: 'Arial, Helvetica, sans-serif',
+              textAlign: 'center',
+              marginBottom: '10px',
+            }}
+          >
+            You own {nftAmount} Scary Garys NFTs
+          </div>
+          {nftAmount > 0 && (
+            <div
+              style={{
+                color: 'white',
+                fontSize: '18px',
+                fontFamily: 'Arial, Helvetica, sans-serif',
+                textAlign: 'center',
+                maxWidth: '90%',
+                wordWrap: 'break-word',
+                overflowWrap: 'break-word',
+              }}
+            >
+              Token IDs: {tokenIds}
+            </div>
+          )}
+        </div>
+      </div>
+    ),
+    imageAspectRatio: '1:1',
     intents: [
-      <button>
-        Refresh NFT Count
-      </button>
+      <Button action="/">Refresh NFT Count</Button>
     ],
   })
 })
 
-export const GET = app.fetch
-export const POST = app.fetch
+export const GET = handle(app)
+export const POST = handle(app)
