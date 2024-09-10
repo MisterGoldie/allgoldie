@@ -106,25 +106,39 @@ async function getScaryGarysImages(address: string): Promise<NFTMetadata[]> {
 
     const response = await axios.get(url, { params })
 
-    if (response.data.status === '1') {
-      const ownedTokens = response.data.result
-        .filter((tx: { to: string; tokenID: string }) => tx.to.toLowerCase() === address.toLowerCase())
-        .map((tx: { tokenID: string }) => tx.tokenID)
-
-      // Remove duplicates
-      const uniqueTokenIds = [...new Set(ownedTokens)]
-
-      // Construct image URLs based on Scary Garys metadata structure
-      return uniqueTokenIds.map((tokenId: string) => ({
-        tokenId: tokenId,
-        imageUrl: `https://ipfs.imnotart.com/ipfs/QmRR17CPhVrNkHKQkDg7QBR3Kj1Kt3VHuZQaHUbEbG989i/${tokenId}.png`
-      }))
-    } else {
+    if (response.data.status !== '1') {
       console.error('Error response from Etherscan:', response.data.message)
       return []
     }
+
+    const ownedTokens = response.data.result
+      .filter((tx: { to: string; tokenID: string }) => tx.to.toLowerCase() === address.toLowerCase())
+      .map((tx: { tokenID: string }) => tx.tokenID)
+
+    const uniqueTokenIds = [...new Set(ownedTokens)]
+
+    const metadataPromises = uniqueTokenIds.map(async (tokenId: unknown) => {
+      if (typeof tokenId !== 'string') {
+        console.error(`Invalid token ID: ${tokenId}`);
+        return null;
+      }
+      const metadataUrl = `https://ipfs.imnotart.com/ipfs/QmbmAW6t7SSQ6q8YCnFgbWHwWBjt3q1TwMQbgmjCJCPLaH/${tokenId}`
+      try {
+        const metadataResponse = await axios.get(metadataUrl)
+        return {
+          tokenId: tokenId,
+          imageUrl: metadataResponse.data.image
+        }
+      } catch (error) {
+        console.error(`Error fetching metadata for token ${tokenId}:`, error)
+        return null
+      }
+    })
+
+    const metadataResults = await Promise.all(metadataPromises)
+    return metadataResults.filter((result): result is NFTMetadata => result !== null)
   } catch (error) {
-    console.error('Error fetching Scary Garys images from Etherscan:', error)
+    console.error('Error fetching Scary Garys images:', error)
     return []
   }
 }
@@ -156,7 +170,7 @@ app.frame('/check', async (c) => {
     try {
       const connectedAddresses = await getConnectedAddresses(fid.toString());
       if (connectedAddresses.length > 0) {
-        const address = connectedAddresses[0]; // Use the first connected address
+        const address = connectedAddresses[0];
         console.log('Using Ethereum address:', address);
         nftAmount = await getOwnedScaryGarys(address);
         if (nftAmount > 0) {
@@ -183,13 +197,14 @@ app.frame('/check', async (c) => {
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action="/view-nfts">View Your Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Your Scary Garys</Button>] : []),
     ],
   })
 })
 
 app.frame('/view-nfts', async (c) => {
   const { fid } = c.frameData || {};
+  const currentIndex = parseInt(c.buttonValue || '0');
   let ownedNFTs: NFTMetadata[] = [];
 
   if (fid) {
@@ -200,15 +215,15 @@ app.frame('/view-nfts', async (c) => {
     }
   }
 
-  // For simplicity, we'll just show the first NFT if available
-  const nftToShow = ownedNFTs[0];
+  const nftToShow = ownedNFTs[currentIndex] || null;
+  const nextIndex = (currentIndex + 1) % ownedNFTs.length;
 
   return c.res({
     image: nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE,
     imageAspectRatio: '1:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
-      ...(ownedNFTs.length > 1 ? [<Button action="/view-nfts">Next NFT</Button>] : []),
+      ...(ownedNFTs.length > 1 ? [<Button action="/view-nfts" value={nextIndex.toString()}>Next NFT</Button>] : []),
     ],
   })
 })
