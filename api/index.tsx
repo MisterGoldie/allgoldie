@@ -16,6 +16,7 @@ const app = new Frog({
 )
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
+const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
 const BACKGROUND_IMAGE = 'https://bafybeichmmtimnjxzhtwedhxwgjyrusqes7zie4glvbdnx6r7clvvc77ne.ipfs.w3s.link/Thumbnail%20(28).png'
 const ERROR_BACKGROUND_IMAGE = 'https://bafybeifa7k5ei2wu6vk464axt2xysxw75fos52w765favoho63fig23sja.ipfs.w3s.link/Group%2048087.png'
 const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7zppi5jpfwqhtzceq.ipfs.w3s.link/Thumbnail%20(30).png'
@@ -74,7 +75,24 @@ async function getConnectedAddresses(fid: string): Promise<string[]> {
   }
 }
 
-async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
+async function getOwnedScaryGarys(address: string): Promise<number> {
+  const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
+  const params = {
+    owner: address,
+    contractAddresses: [SCARY_GARYS_ADDRESS],
+    withMetadata: true,
+  }
+
+  try {
+    const response = await axios.get(url, { params })
+    return response.data.totalCount
+  } catch (error) {
+    console.error('Error fetching Scary Garys:', error)
+    return 0
+  }
+}
+
+async function getScaryGarysImages(address: string): Promise<NFTMetadata[]> {
   try {
     const response = await axios.get(`https://api.opensea.io/api/v1/assets`, {
       params: {
@@ -92,7 +110,7 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
       imageUrl: asset.image_url,
     }));
   } catch (error) {
-    console.error('Error fetching Scary Garys from OpenSea:', error)
+    console.error('Error fetching Scary Garys images from OpenSea:', error)
     return []
   }
 }
@@ -116,7 +134,7 @@ app.frame('/check', async (c) => {
   console.log('Display Name:', displayName);
   console.log('Profile Picture URL:', pfpUrl);
 
-  let ownedNFTs: NFTMetadata[] = [];
+  let nftAmount = 0;
   let errorMessage = '';
   let backgroundImage = BACKGROUND_IMAGE;
 
@@ -126,8 +144,8 @@ app.frame('/check', async (c) => {
       if (connectedAddresses.length > 0) {
         const address = connectedAddresses[0]; // Use the first connected address
         console.log('Using Ethereum address:', address);
-        ownedNFTs = await getOwnedScaryGarys(address);
-        if (ownedNFTs.length > 0) {
+        nftAmount = await getOwnedScaryGarys(address);
+        if (nftAmount > 0) {
           backgroundImage = CONFIRMATION_IMAGE;
         }
       } else {
@@ -144,14 +162,14 @@ app.frame('/check', async (c) => {
     backgroundImage = ERROR_BACKGROUND_IMAGE;
   }
 
-  const buttonText = errorMessage || `Ayeee you own ${ownedNFTs.length} Scary Garys!`;
+  const buttonText = errorMessage || `Ayeee you own ${nftAmount} Scary Garys!`;
 
   return c.res({
     image: backgroundImage,
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>,
-      ...(ownedNFTs.length > 0 ? [<Button action="/view-nfts">View Your Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action="/view-nfts">View Your Scary Garys</Button>] : []),
     ],
   })
 })
@@ -164,7 +182,7 @@ app.frame('/view-nfts', async (c) => {
     const connectedAddresses = await getConnectedAddresses(fid.toString());
     if (connectedAddresses.length > 0) {
       const address = connectedAddresses[0];
-      ownedNFTs = await getOwnedScaryGarys(address);
+      ownedNFTs = await getScaryGarysImages(address);
     }
   }
 
