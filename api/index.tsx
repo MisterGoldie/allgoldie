@@ -10,6 +10,7 @@ const app = new Frog({
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
+const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
 
 interface NFTMetadata {
   tokenId: string;
@@ -49,80 +50,13 @@ app.frame('/', async (c) => {
   }
 
   const nftAmount = ownedNFTs.length
-  const tokenIds = ownedNFTs.map(nft => nft.tokenId).join(', ')
+  const buttonText = `You own ${nftAmount} Scary Garys NFTs. Refresh?`
 
   return c.res({
-    image: (
-      <div
-        style={{
-          position: 'relative',
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          overflow: 'hidden',
-          backgroundColor: '#4a5568',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              color: 'white',
-              fontSize: '36px',
-              fontWeight: 'bold',
-              fontFamily: 'Arial, Helvetica, sans-serif',
-              textAlign: 'center',
-              marginBottom: '20px',
-            }}
-          >
-            Scary Garys NFT Checker
-          </div>
-          <div
-            style={{
-              color: 'white',
-              fontSize: '24px',
-              fontFamily: 'Arial, Helvetica, sans-serif',
-              textAlign: 'center',
-              marginBottom: '10px',
-            }}
-          >
-            You own {nftAmount} Scary Garys NFTs
-          </div>
-          {nftAmount > 0 && (
-            <div
-              style={{
-                color: 'white',
-                fontSize: '18px',
-                fontFamily: 'Arial, Helvetica, sans-serif',
-                textAlign: 'center',
-                maxWidth: '90%',
-                wordWrap: 'break-word',
-                overflowWrap: 'break-word',
-              }}
-            >
-              Token IDs: {tokenIds}
-            </div>
-          )}
-        </div>
-      </div>
-    ),
-    imageAspectRatio: '1:1',
+    image: BACKGROUND_IMAGE,
+    imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/">Refresh NFT Count</Button>
+      <Button action="/">{buttonText}</Button>
     ],
   })
 })
