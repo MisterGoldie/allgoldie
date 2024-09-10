@@ -153,8 +153,6 @@ app.frame('/check', async (c) => {
   })
 })
 
-// ... (previous code remains the same)
-
 app.frame('/view-nfts', async (c) => {
   const urlParams = new URLSearchParams(c.frameData?.url?.split('?')[1] || '');
   const nftsParam = urlParams.get('nfts');
@@ -165,30 +163,25 @@ app.frame('/view-nfts', async (c) => {
   const endIndex = startIndex + nftsPerPage;
   const currentNFTs = nfts.slice(startIndex, endIndex);
 
+  const totalNFTs = nfts.length;
+  const currentPageInfo = `Showing ${startIndex + 1}-${Math.min(endIndex, totalNFTs)} of ${totalNFTs}`;
+
+  const nftButtons = currentNFTs.map((nft) => (
+    <Button action={nft.imageUrl}>View NFT #{nft.tokenId}</Button>
+  ));
+
   return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
-        <h1 style={{ color: 'white', fontSize: '40px', marginBottom: '20px' }}>Your Scary Garys</h1>
-        <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          {currentNFTs.map((nft, index) => (
-            <img key={index} src={nft.imageUrl} alt={`Scary Gary #${nft.tokenId}`} style={{ width: '200px', height: '200px', objectFit: 'cover' }} />
-          ))}
-        </div>
-        <p style={{ color: 'white', fontSize: '20px', marginTop: '20px' }}>
-          Showing {startIndex + 1}-{Math.min(endIndex, nfts.length)} of {nfts.length}
-        </p>
-      </div>
-    ),
+    image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
+      ...nftButtons,
+      <Button action="/view-nfts">{currentPageInfo}</Button>,
       ...(page > 0 ? [<Button action={`/view-nfts?nfts=${encodeURIComponent(JSON.stringify(nfts))}&page=${page - 1}`}>Previous</Button>] : []),
       ...(endIndex < nfts.length ? [<Button action={`/view-nfts?nfts=${encodeURIComponent(JSON.stringify(nfts))}&page=${page + 1}`}>Next</Button>] : []),
     ],
   })
 })
-
-// ... (rest of the code remains the same)
 
 export const GET = handle(app)
 export const POST = handle(app)
