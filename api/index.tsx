@@ -3,6 +3,7 @@ import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
 import axios from 'axios'
+import { ethers } from 'ethers'
 
 const app = new Frog({
   basePath: '/api',
@@ -17,7 +18,7 @@ const app = new Frog({
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
-const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
+const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmX7Py8TGVGdp3ffXb4XGfd83WwmLZ8FyQV2PEquhAFZ2P'
 const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/Qma1Evr6rzzXoCDG5kzWgD7vekUpdj5VYCdKu8VcgSjxdD'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
@@ -25,6 +26,20 @@ const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 interface NFTMetadata {
   tokenId: string;
   imageUrl: string;
+}
+
+const provider = new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`);
+const scaryGarysABI = ['function tokenURI(uint256 tokenId) view returns (string)'];
+const scaryGarysContract = new ethers.Contract(SCARY_GARYS_ADDRESS, scaryGarysABI, provider);
+
+async function getBaseURI(): Promise<string> {
+  try {
+    const tokenURI = await scaryGarysContract.tokenURI(1); // Fetch tokenURI for token ID 1
+    return tokenURI.split('/').slice(0, -1).join('/') + '/'; // Remove the token ID and add a trailing slash
+  } catch (error) {
+    console.error('Error fetching baseURI:', error);
+    return '';
+  }
 }
 
 async function getConnectedAddresses(fid: string): Promise<string[]> {
@@ -83,9 +98,10 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
 
   try {
     const response = await axios.get(url, { params })
+    const baseURI = await getBaseURI();
     return response.data.ownedNfts.map((nft: any) => ({
       tokenId: nft.id.tokenId,
-      imageUrl: nft.metadata.image,
+      imageUrl: `${baseURI}${nft.id.tokenId}`,
     }))
   } catch (error) {
     console.error('Error fetching Scary Garys:', error)
