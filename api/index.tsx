@@ -94,16 +94,29 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
 }
 
 app.frame('/', (c) => {
-  return c.res({
-    image: BACKGROUND_IMAGE,
-    imageAspectRatio: '1.91:1',
-    intents: [
-      <Button action="/check">Check Scary Garys NFTs</Button>
-    ],
-  })
+  console.log('Rendering initial frame');
+  try {
+    return c.res({
+      image: BACKGROUND_IMAGE,
+      imageAspectRatio: '1.91:1',
+      intents: [
+        <Button action="/check">Check Scary Garys NFTs</Button>
+      ],
+    })
+  } catch (error) {
+    console.error('Error in root frame:', error);
+    return c.res({
+      image: ERROR_BACKGROUND_IMAGE,
+      imageAspectRatio: '1.91:1',
+      intents: [
+        <Button action="/">Error occurred. Retry?</Button>
+      ],
+    })
+  }
 })
 
 app.frame('/check', async (c) => {
+  console.log('Check frame called');
   console.log('Full frameData:', JSON.stringify(c.frameData, null, 2));
   const { fid } = c.frameData || {};
   const { displayName, pfpUrl } = c.var.interactor || {};
@@ -116,8 +129,8 @@ app.frame('/check', async (c) => {
   let errorMessage = '';
   let backgroundImage = BACKGROUND_IMAGE;
 
-  if (fid) {
-    try {
+  try {
+    if (fid) {
       const connectedAddresses = await getConnectedAddresses(fid.toString());
       if (connectedAddresses.length > 0) {
         const address = connectedAddresses[0]; // Use the first connected address
@@ -128,25 +141,30 @@ app.frame('/check', async (c) => {
         errorMessage = 'No connected Ethereum addresses found';
         backgroundImage = ERROR_BACKGROUND_IMAGE;
       }
-    } catch (error) {
-      console.error('Error checking NFTs:', error);
-      errorMessage = 'Error checking NFTs';
+    } else {
+      errorMessage = 'No FID found for the user';
       backgroundImage = ERROR_BACKGROUND_IMAGE;
     }
-  } else {
-    errorMessage = 'No FID found for the user';
-    backgroundImage = ERROR_BACKGROUND_IMAGE;
+
+    const buttonText = errorMessage || `Ayee you own ${nftAmount} Scary Garys NFTs!`;
+
+    return c.res({
+      image: backgroundImage,
+      imageAspectRatio: '1.91:1',
+      intents: [
+        <Button action="/check">{buttonText}</Button>
+      ],
+    })
+  } catch (error) {
+    console.error('Error in check frame:', error);
+    return c.res({
+      image: ERROR_BACKGROUND_IMAGE,
+      imageAspectRatio: '1.91:1',
+      intents: [
+        <Button action="/">Error occurred. Retry?</Button>
+      ],
+    })
   }
-
-  const buttonText = errorMessage || `You own ${nftAmount} Scary Garys NFTs. Check again?`;
-
-  return c.res({
-    image: backgroundImage,
-    imageAspectRatio: '1.91:1',
-    intents: [
-      <Button action="/check">{buttonText}</Button>
-    ],
-  })
 })
 
 export const GET = handle(app)
