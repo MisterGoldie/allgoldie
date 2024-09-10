@@ -18,6 +18,7 @@ const app = new Frog({
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
 const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
+const OPENSEA_API_KEY = 'eb90d151ee88429eac31c3b6cac0aa2e'
 const BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/QmVxD55EV753EqPwgsaLWq4635sT6UR1M1ft2vhL3GZpeV'
 const ERROR_BACKGROUND_IMAGE = 'https://amaranth-adequate-condor-278.mypinata.cloud/ipfs/Qma1Evr6rzzXoCDG5kzWgD7vekUpdj5VYCdKu8VcgSjxdD'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
@@ -26,24 +27,45 @@ const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 interface NFTMetadata {
   tokenId: string;
   imageUrl: string;
+  name: string;
+  description: string;
 }
 
 const provider = new ethers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}`);
 const scaryGarysABI = ['function tokenURI(uint256 tokenId) view returns (string)'];
 const scaryGarysContract = new ethers.Contract(SCARY_GARYS_ADDRESS, scaryGarysABI, provider);
 
-async function getBaseURI(): Promise<string> {
-  try {
-    console.log('Fetching baseURI...');
-    const tokenURI = await scaryGarysContract.tokenURI(1);
-    console.log('Fetched tokenURI:', tokenURI);
-    const baseURI = tokenURI.split('/').slice(0, -1).join('/') + '/';
-    console.log('Constructed baseURI:', baseURI);
-    return baseURI;
-  } catch (error) {
-    console.error('Error fetching baseURI:', error);
-    return '';
+async function getScaryGarysFromOpenSea(tokenIds: string[]): Promise<NFTMetadata[]> {
+  const nfts: NFTMetadata[] = [];
+  
+  for (const tokenId of tokenIds) {
+    try {
+      const response = await axios.get(
+        `https://api.opensea.io/api/v2/chain/ethereum/contract/${SCARY_GARYS_ADDRESS}/nfts/${tokenId}`,
+        {
+          headers: {
+            'accept': 'application/json',
+            'x-api-key': OPENSEA_API_KEY
+          }
+        }
+      );
+      
+      console.log(`OpenSea API response for token ${tokenId}:`, JSON.stringify(response.data, null, 2));
+      
+      if (response.data && response.data.nft) {
+        nfts.push({
+          tokenId: tokenId,
+          imageUrl: response.data.nft.image_url,
+          name: response.data.nft.name,
+          description: response.data.nft.description
+        });
+      }
+    } catch (error) {
+      console.error(`Error fetching data for token ${tokenId} from OpenSea:`, error);
+    }
   }
+  
+  return nfts;
 }
 
 async function getConnectedAddresses(fid: string): Promise<string[]> {
@@ -104,16 +126,14 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
   try {
     const response = await axios.get(url, { params })
     console.log('Alchemy API response:', JSON.stringify(response.data, null, 2));
-    const baseURI = await getBaseURI();
-    const nfts = response.data.ownedNfts.map((nft: any) => {
-      const imageUrl = `${baseURI}${nft.id.tokenId}`;
-      console.log(`Constructed image URL for token ${nft.id.tokenId}:`, imageUrl);
-      return {
-        tokenId: nft.id.tokenId,
-        imageUrl: imageUrl,
-      };
-    });
-    console.log('Constructed NFT metadata:', JSON.stringify(nfts, null, 2));
+    
+    const tokenIds = response.data.ownedNfts.map((nft: any) => nft.id.tokenId);
+    console.log('Token IDs owned:', tokenIds);
+    
+    // Fetch detailed NFT data from OpenSea
+    const nfts = await getScaryGarysFromOpenSea(tokenIds);
+    console.log('NFT data from OpenSea:', JSON.stringify(nfts, null, 2));
+    
     return nfts;
   } catch (error) {
     console.error('Error fetching Scary Garys:', error)
@@ -181,7 +201,7 @@ app.frame('/check', async (c) => {
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">Check Again</Button>,
-      ...(nftAmount > 0 ? [<Button action={`/view-nfts?tokenIds=${ownedNFTs.map(nft => nft.tokenId).join(',')}&imageUrls=${ownedNFTs.map(nft => encodeURIComponent(nft.imageUrl)).join(',')}`}>View Your Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action={`/view-nfts?tokenIds=${ownedNFTs.map(nft => nft.tokenId).join(',')}`}>View Your Scary Garys</Button>] : []),
     ],
   })
 })
@@ -190,20 +210,16 @@ app.frame('/view-nfts', async (c) => {
   console.log('Entering /view-nfts frame');
   const urlParams = new URLSearchParams(c.frameData?.url?.split('?')[1] || '');
   const tokenIds = urlParams.get('tokenIds')?.split(',') || [];
-  const imageUrls = urlParams.get('imageUrls')?.split(',').map(decodeURIComponent) || [];
   console.log('Received tokenIds:', tokenIds);
-  console.log('Received imageUrls:', imageUrls);
   
+  const nfts = await getScaryGarysFromOpenSea(tokenIds);
+  console.log('NFT data for display:', JSON.stringify(nfts, null, 2));
+
   const page = parseInt(urlParams.get('page') || '0');
   const nftsPerPage = 4;
   const startIndex = page * nftsPerPage;
   const endIndex = startIndex + nftsPerPage;
-  const currentNFTs = tokenIds.slice(startIndex, endIndex).map((tokenId, index) => ({
-    tokenId,
-    imageUrl: imageUrls[startIndex + index],
-  }));
-
-  console.log('Current NFTs to display:', JSON.stringify(currentNFTs, null, 2));
+  const currentNFTs = nfts.slice(startIndex, endIndex);
 
   return c.res({
     image: (
@@ -211,19 +227,22 @@ app.frame('/view-nfts', async (c) => {
         <h1 style={{ color: 'white', fontSize: '40px', marginBottom: '20px' }}>Your Scary Garys</h1>
         <div style={{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
           {currentNFTs.map((nft: NFTMetadata, index: number) => (
-            <img key={index} src={nft.imageUrl} alt={`Scary Gary #${nft.tokenId}`} style={{ width: '200px', height: '200px', objectFit: 'cover' }} />
+            <div key={index} style={{ textAlign: 'center' }}>
+              <img src={nft.imageUrl} alt={nft.name} style={{ width: '200px', height: '200px', objectFit: 'cover' }} />
+              <p style={{ color: 'white', fontSize: '16px', marginTop: '5px' }}>{nft.name}</p>
+            </div>
           ))}
         </div>
         <p style={{ color: 'white', fontSize: '20px', marginTop: '20px' }}>
-          Showing {startIndex + 1}-{Math.min(endIndex, tokenIds.length)} of {tokenIds.length}
+          Showing {startIndex + 1}-{Math.min(endIndex, nfts.length)} of {nfts.length}
         </p>
       </div>
     ),
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
-      ...(page > 0 ? [<Button action={`/view-nfts?tokenIds=${tokenIds.join(',')}&imageUrls=${imageUrls.map(encodeURIComponent).join(',')}&page=${page - 1}`}>Previous</Button>] : []),
-      ...(endIndex < tokenIds.length ? [<Button action={`/view-nfts?tokenIds=${tokenIds.join(',')}&imageUrls=${imageUrls.map(encodeURIComponent).join(',')}&page=${page + 1}`}>Next</Button>] : []),
+      ...(page > 0 ? [<Button action={`/view-nfts?tokenIds=${tokenIds.join(',')}&page=${page - 1}`}>Previous</Button>] : []),
+      ...(endIndex < nfts.length ? [<Button action={`/view-nfts?tokenIds=${tokenIds.join(',')}&page=${page + 1}`}>Next</Button>] : []),
     ],
   })
 })
