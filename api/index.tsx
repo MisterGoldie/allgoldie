@@ -37,26 +37,36 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
   }
 }
 
-app.frame('/', async (c) => {
+app.frame('/', (c) => {
+  return c.res({
+    image: BACKGROUND_IMAGE,
+    imageAspectRatio: '1.91:1',
+    intents: [
+      <Button action="/check">Check Scary Garys NFTs</Button>
+    ],
+  })
+})
+
+app.frame('/check', async (c) => {
   const userAddress = c.frameData?.address
 
-  let ownedNFTs: NFTMetadata[] = []
+  let nftAmount = 0
   if (userAddress) {
     try {
-      ownedNFTs = await getOwnedScaryGarys(userAddress)
+      const ownedNFTs = await getOwnedScaryGarys(userAddress)
+      nftAmount = ownedNFTs.length
     } catch (error) {
       console.error('Error fetching Scary Garys:', error)
     }
   }
 
-  const nftAmount = ownedNFTs.length
-  const buttonText = `You own ${nftAmount} Scary Garys NFTs. Refresh?`
+  const buttonText = `You own ${nftAmount} Scary Garys NFTs. Check again?`
 
   return c.res({
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/">{buttonText}</Button>
+      <Button action="/check">{buttonText}</Button>
     ],
   })
 })
