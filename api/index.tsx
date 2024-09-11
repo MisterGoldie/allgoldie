@@ -143,7 +143,7 @@ app.frame('/check', async (c) => {
     backgroundImage = ERROR_BACKGROUND_IMAGE;
   }
 
-  const buttonText = errorMessage || `Ayeee you own ${nftAmount} Scary Garys!`;
+  const buttonText = errorMessage || `You own ${nftAmount} Scary Garys!`;
 
   return c.res({
     image: backgroundImage,
