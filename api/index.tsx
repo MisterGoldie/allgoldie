@@ -184,7 +184,7 @@ app.frame('/view-nfts', async (c) => {
   const prevPage = (page - 1 + totalNFTs) % totalNFTs;
 
   let displayImage = nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE;
-  let displayText = errorMessage || `Showing NFT ${page + 1} of ${totalNFTs}`;
+  let displayText = errorMessage || `Showing Scary Gary ${page + 1} of ${totalNFTs}`;
 
   return c.res({
     image: (
