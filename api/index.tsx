@@ -196,7 +196,7 @@ app.frame('/view-nfts', async (c) => {
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(135deg, #1e5799 0%, #2989d8 50%, #207cca 51%, #7db9e8 100%)', // Gradient background
+          background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14 51%, #6D1510 100%)', // Gradient background
         }}
       >
         <div
@@ -213,8 +213,8 @@ app.frame('/view-nfts', async (c) => {
             src={displayImage}
             alt="NFT"
             style={{
-              width: '300px',
-              height: '300px',
+              width: '400px',
+              height: '400px',
               objectFit: 'contain',
               borderRadius: '5px',
             }}
@@ -225,7 +225,7 @@ app.frame('/view-nfts', async (c) => {
         </div>
       </div>
     ),
-    imageAspectRatio: '1.91:1',
+    imageAspectRatio: '1:1',
     intents: [
       <Button action="/check">Back to Check</Button>,
       <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
