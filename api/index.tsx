@@ -20,7 +20,6 @@ const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
 const BACKGROUND_IMAGE = 'https://bafybeichmmtimnjxzhtwedhxwgjyrusqes7zie4glvbdnx6r7clvvc77ne.ipfs.w3s.link/Thumbnail%20(28).png'
 const ERROR_BACKGROUND_IMAGE = 'https://bafybeifa7k5ei2wu6vk464axt2xysxw75fos52w765favoho63fig23sja.ipfs.w3s.link/Group%2048087.png'
 const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7zppi5jpfwqhtzceq.ipfs.w3s.link/Thumbnail%20(30).png'
-const NO_NFTS_IMAGE = 'https://bafybeifeh7oveq4o6g4vyxb4lvuf36xa3xtr4623rv5vmezyxpc4yjjwvi.ipfs.w3s.link/Group%2048087%20(2).png'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 
@@ -100,7 +99,7 @@ app.frame('/', (c) => {
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Check Scary Garys</Button>
+      <Button action="/check">Check Scary Garys Balance</Button>
     ],
   })
 })
@@ -129,8 +128,6 @@ app.frame('/check', async (c) => {
         nftAmount = ownedNFTs.length;
         if (nftAmount > 0) {
           backgroundImage = CONFIRMATION_IMAGE; // Use the confirmation image if user owns Scary Garys
-        } else {
-          backgroundImage = NO_NFTS_IMAGE; // Use the new image for users with 0 Scary Garys
         }
       } else {
         errorMessage = 'No connected Ethereum addresses found';
@@ -153,7 +150,7 @@ app.frame('/check', async (c) => {
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Your Scary Garys</Button>] : []),
     ],
   })
 })
@@ -199,7 +196,9 @@ app.frame('/view-nfts', async (c) => {
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14 51%, #6D1510 100%)',
+          backgroundImage: `url(${BACKGROUND_IMAGE})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }}
       >
         <div
@@ -210,8 +209,6 @@ app.frame('/view-nfts', async (c) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            width: '90%',
-            maxWidth: '800px',
           }}
         >
           <img
@@ -224,7 +221,7 @@ app.frame('/view-nfts', async (c) => {
               borderRadius: '5px',
             }}
           />
-          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px', textAlign: 'center' }}>
+          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
             {displayText}
           </p>
         </div>
