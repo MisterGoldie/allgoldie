@@ -99,7 +99,7 @@ app.frame('/', (c) => {
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Check Scary Garys Balance</Button>
+      <Button action="/check">Check Scary Garys balance</Button>
     ],
   })
 })
@@ -150,7 +150,7 @@ app.frame('/check', async (c) => {
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Your Scary Garys</Button>] : []),
     ],
   })
 })
@@ -196,9 +196,9 @@ app.frame('/view-nfts', async (c) => {
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          backgroundImage: `url(${BACKGROUND_IMAGE})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1)',
+          backgroundSize: '200% 200%',
+          animation: 'gradientBG 10s ease infinite',
         }}
       >
         <div
@@ -215,8 +215,8 @@ app.frame('/view-nfts', async (c) => {
             src={displayImage}
             alt="NFT"
             style={{
-              width: '400px',
-              height: '400px',
+              width: '300px',
+              height: '300px',
               objectFit: 'contain',
               borderRadius: '5px',
             }}
@@ -227,9 +227,9 @@ app.frame('/view-nfts', async (c) => {
         </div>
       </div>
     ),
-    imageAspectRatio: '1:1',
+    imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Back to check</Button>,
+      <Button action="/check">Back to Check</Button>,
       <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
       <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
     ],
