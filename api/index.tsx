@@ -122,7 +122,7 @@ app.frame('/check', async (c) => {
     try {
       const connectedAddresses = await getConnectedAddresses(fid.toString());
       if (connectedAddresses.length > 0) {
-        const address = connectedAddresses[0]; // Use the first connected address
+        const address = connectedAddresses[0]; 
         console.log('Using Ethereum address:', address);
         ownedNFTs = await getOwnedScaryGarys(address);
         nftAmount = ownedNFTs.length;
