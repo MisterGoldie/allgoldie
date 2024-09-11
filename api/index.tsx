@@ -17,11 +17,13 @@ const app = new Frog({
 )
 
 const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
+const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
 const BACKGROUND_IMAGE = 'https://bafybeichmmtimnjxzhtwedhxwgjyrusqes7zie4glvbdnx6r7clvvc77ne.ipfs.w3s.link/Thumbnail%20(28).png'
 const ERROR_BACKGROUND_IMAGE = 'https://bafybeifa7k5ei2wu6vk464axt2xysxw75fos52w765favoho63fig23sja.ipfs.w3s.link/Group%2048087.png'
 const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7zppi5jpfwqhtzceq.ipfs.w3s.link/Thumbnail%20(30).png'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
+const ETHERSCAN_API_KEY = 'ZUGFEPG5A713UMRZKQA9MQVNGRHPQIHMU7'
 
 const cache = new NodeCache({ stdTTL: 300 }) // 5 minutes cache
 
@@ -101,7 +103,7 @@ app.frame('/', (c) => {
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Check scary garys</Button>
+      <Button action="/check">Check Scary Garys balance</Button>
     ],
   })
 })
@@ -136,7 +138,7 @@ app.frame('/check', async (c) => {
     backgroundImage = ERROR_BACKGROUND_IMAGE;
   }
 
-  const buttonText = errorMessage || `Ayeee, you own ${nftAmount} Scary Garys!`;
+  const buttonText = errorMessage || `Ayeee you own ${nftAmount} Scary Garys!`;
 
   return c.res({
     image: backgroundImage,
@@ -151,6 +153,7 @@ app.frame('/check', async (c) => {
 app.frame('/view-nfts', async (c) => {
   const { fid } = c.frameData || {};
   const page = parseInt(c.buttonValue || '0');
+  const ITEMS_PER_PAGE = 1;
   let ownedNFTs: NFTMetadata[] = [];
   let errorMessage = '';
 
@@ -176,48 +179,14 @@ app.frame('/view-nfts', async (c) => {
 
   return c.res({
     image: (
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          backgroundImage: `url(${BACKGROUND_IMAGE})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: 'rgba(30, 30, 30, 0.8)',
-            padding: '20px',
-            borderRadius: '10px',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-          }}
-        >
-          <img
-            src={displayImage}
-            alt="NFT"
-            style={{
-              width: '300px',
-              height: '300px',
-              objectFit: 'contain',
-              borderRadius: '5px',
-            }}
-          />
-          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
-            {displayText}
-          </p>
-        </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
+        <img src={displayImage} alt="NFT" style={{ maxWidth: '80%', maxHeight: '70%', objectFit: 'contain' }} />
+        <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>{displayText}</p>
       </div>
     ),
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Back to check</Button>,
+      <Button action="/check">Back to Check</Button>,
       <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
       <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
     ],
