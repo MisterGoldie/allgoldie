@@ -3,7 +3,6 @@ import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
 import axios from 'axios'
-import NodeCache from 'node-cache'
 
 const app = new Frog({
   basePath: '/api',
@@ -23,78 +22,75 @@ const ERROR_BACKGROUND_IMAGE = 'https://bafybeifa7k5ei2wu6vk464axt2xysxw75fos52w
 const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7zppi5jpfwqhtzceq.ipfs.w3s.link/Thumbnail%20(30).png'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
-const ETHERSCAN_API_KEY = 'ZUGFEPG5A713UMRZKQA9MQVNGRHPQIHMU7'
-
-const cache = new NodeCache({ stdTTL: 300 }) // 5 minutes cache
 
 interface NFTMetadata {
   tokenId: string;
   imageUrl: string;
 }
 
-async function getConnectedAddressAndNFTs(fid: string): Promise<{ address: string, nfts: NFTMetadata[] }> {
-  const cacheKey = `fid_${fid}`
-  const cachedData = cache.get(cacheKey)
-  if (cachedData) {
-    return cachedData as { address: string, nfts: NFTMetadata[] }
-  }
-
+async function getConnectedAddresses(fid: string): Promise<string[]> {
+  console.log('Attempting to fetch connected addresses for FID:', fid);
   try {
     const query = `
-      query($fid: String!, $contractAddress: String!) {
+      query ConnectedWalletWithFID($fid: String!) {
         Socials(input: {filter: {userId: {_eq: $fid}}, blockchain: ethereum}) {
           Social {
+            dappName
+            profileName
             userAddress
             connectedAddresses {
               address
+              blockchain
             }
           }
         }
-        TokenBalances(
-          input: {
-            filter: {
-              owner: {_eq: $address},
-              tokenAddress: {_eq: $contractAddress}
-            },
-            blockchain: ethereum
-          }
-        ) {
-          TokenBalance {
-            tokenId
-            tokenAddress
-          }
-        }
       }
-    `
+    `;
 
-    const variables = { fid, contractAddress: SCARY_GARYS_ADDRESS }
+    const variables = { fid };
 
     const response = await axios.post(AIRSTACK_API_URL, 
       { query, variables },
-      { headers: { 'Authorization': AIRSTACK_API_KEY }, timeout: 5000 }
-    )
+      { headers: { 'Authorization': AIRSTACK_API_KEY } }
+    );
 
-    const data = response.data.data
-    if (!data || !data.Socials || !data.Socials.Social || !data.TokenBalances) {
-      throw new Error('Unexpected response structure from Airstack API')
+    const data = response.data;
+    console.log('Full Airstack API response:', JSON.stringify(data, null, 2));
+
+    if (!data.data || !data.data.Socials || !data.data.Socials.Social) {
+      console.error('Unexpected response structure from Airstack API');
+      return [];
     }
 
-    const address = data.Socials.Social[0]?.userAddress || data.Socials.Social[0]?.connectedAddresses[0]?.address
-    if (!address) {
-      throw new Error('No connected Ethereum address found')
-    }
+    const addresses = data.data.Socials.Social.flatMap((social: any) =>
+      social.connectedAddresses.map((addr: any) => addr.address)
+    );
 
-    const nfts = data.TokenBalances.TokenBalance.map((token: any) => ({
-      tokenId: token.tokenId,
-      imageUrl: `https://ipfs.imnotart.com/ipfs/QmRR17CPhVrNkHKQkDg7QBR3Kj1Kt3VHuZQaHUbEbG989i/${token.tokenId}.png`
-    }))
-
-    const result = { address, nfts }
-    cache.set(cacheKey, result)
-    return result
+    console.log('Connected addresses:', addresses);
+    return addresses;
   } catch (error) {
-    console.error('Error in getConnectedAddressAndNFTs:', error)
-    throw error
+    console.error('Error in getConnectedAddresses:', error);
+    return [];
+  }
+}
+
+async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
+  const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
+  const params = {
+    owner: address,
+    contractAddresses: [SCARY_GARYS_ADDRESS],
+    withMetadata: true,
+  }
+
+  try {
+    const response = await axios.get(url, { params })
+    return response.data.ownedNfts.map((nft: any) => ({
+      tokenId: nft.id.tokenId,
+      imageUrl: nft.metadata.image,
+    }))
+  } catch (error) {
+    console.error('Error fetching Scary Garys:', error)
+    return []
   }
 }
 
@@ -123,10 +119,18 @@ app.frame('/check', async (c) => {
 
   if (fid) {
     try {
-      const { nfts } = await getConnectedAddressAndNFTs(fid.toString());
-      nftAmount = nfts.length;
-      if (nftAmount > 0) {
-        backgroundImage = CONFIRMATION_IMAGE;
+      const connectedAddresses = await getConnectedAddresses(fid.toString());
+      if (connectedAddresses.length > 0) {
+        const address = connectedAddresses[0]; // Use the first connected address
+        console.log('Using Ethereum address:', address);
+        const ownedNFTs = await getOwnedScaryGarys(address);
+        nftAmount = ownedNFTs.length;
+        if (nftAmount > 0) {
+          backgroundImage = CONFIRMATION_IMAGE; // Use the confirmation image if user owns Scary Garys
+        }
+      } else {
+        errorMessage = 'No connected Ethereum addresses found';
+        backgroundImage = ERROR_BACKGROUND_IMAGE;
       }
     } catch (error) {
       console.error('Error checking NFTs:', error);
@@ -144,51 +148,7 @@ app.frame('/check', async (c) => {
     image: backgroundImage,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Your Scary Garys</Button>] : []),
-    ],
-  })
-})
-
-app.frame('/view-nfts', async (c) => {
-  const { fid } = c.frameData || {};
-  const page = parseInt(c.buttonValue || '0');
-  const ITEMS_PER_PAGE = 1;
-  let ownedNFTs: NFTMetadata[] = [];
-  let errorMessage = '';
-
-  if (fid) {
-    try {
-      const { nfts } = await getConnectedAddressAndNFTs(fid.toString());
-      ownedNFTs = nfts;
-    } catch (error) {
-      console.error('Error in /view-nfts:', error);
-      errorMessage = 'Error fetching NFT data';
-    }
-  } else {
-    errorMessage = 'No FID found for the user';
-  }
-
-  const totalNFTs = ownedNFTs.length;
-  const nftToShow = ownedNFTs[page] || null;
-  const nextPage = (page + 1) % totalNFTs;
-  const prevPage = (page - 1 + totalNFTs) % totalNFTs;
-
-  let displayImage = nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE;
-  let displayText = errorMessage || `Showing NFT ${page + 1} of ${totalNFTs}`;
-
-  return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#1E1E1E' }}>
-        <img src={displayImage} alt="NFT" style={{ maxWidth: '80%', maxHeight: '70%', objectFit: 'contain' }} />
-        <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>{displayText}</p>
-      </div>
-    ),
-    imageAspectRatio: '1.91:1',
-    intents: [
-      <Button action="/check">Back to Check</Button>,
-      <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
-      <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
+      <Button action="/check">{buttonText}</Button>
     ],
   })
 })
