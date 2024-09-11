@@ -153,7 +153,7 @@ app.frame('/check', async (c) => {
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View your Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Scary Garys</Button>] : []),
     ],
   })
 })
