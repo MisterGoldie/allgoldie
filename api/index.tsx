@@ -27,7 +27,6 @@ const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 interface NFTMetadata {
   tokenId: string;
   imageUrl: string;
-  traits: { trait_type: string; value: string }[];
 }
 
 async function getConnectedAddresses(fid: string): Promise<string[]> {
@@ -89,7 +88,6 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
     return response.data.ownedNfts.map((nft: any) => ({
       tokenId: nft.id.tokenId,
       imageUrl: nft.metadata.image,
-      traits: nft.metadata.attributes || [],
     }))
   } catch (error) {
     console.error('Error fetching Scary Garys:', error)
@@ -130,9 +128,9 @@ app.frame('/check', async (c) => {
         ownedNFTs = await getOwnedScaryGarys(address);
         nftAmount = ownedNFTs.length;
         if (nftAmount > 0) {
-          backgroundImage = CONFIRMATION_IMAGE;
+          backgroundImage = CONFIRMATION_IMAGE; // Use the confirmation image if user owns Scary Garys
         } else {
-          backgroundImage = NO_NFTS_IMAGE;
+          backgroundImage = NO_NFTS_IMAGE; // Use the new image for users with 0 Scary Garys
         }
       } else {
         errorMessage = 'No connected Ethereum addresses found';
@@ -201,7 +199,7 @@ app.frame('/view-nfts', async (c) => {
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14  51%, #6D1510 100%)',
+          background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14  51%, #6D1510 100%)', // Gradient background
         }}
       >
         <div
@@ -212,35 +210,21 @@ app.frame('/view-nfts', async (c) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            width: '90%',
-            maxWidth: '800px',
           }}
         >
           <img
             src={displayImage}
             alt="NFT"
             style={{
-              width: '300px',
-              height: '300px',
+              width: '400px',
+              height: '400px',
               objectFit: 'contain',
               borderRadius: '5px',
             }}
           />
-          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px', textAlign: 'center' }}>
+          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
             {displayText}
           </p>
-          {nftToShow && nftToShow.traits.length > 0 && (
-            <div style={{ marginTop: '20px', color: 'white', fontSize: '18px', textAlign: 'left', width: '100%' }}>
-              <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Traits:</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
-                {nftToShow.traits.map((trait, index) => (
-                  <div key={index} style={{ margin: '5px', padding: '5px 10px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '5px' }}>
-                    <strong>{trait.trait_type}:</strong> {trait.value}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     ),
