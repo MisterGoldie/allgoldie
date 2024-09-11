@@ -146,14 +146,14 @@ app.frame('/check', async (c) => {
     backgroundImage = ERROR_BACKGROUND_IMAGE;
   }
 
-  const buttonText = errorMessage || `You own ${nftAmount} Scary Garys!`;
+  const buttonText = errorMessage || `You own ${nftAmount}`;
 
   return c.res({
     image: backgroundImage,
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Your Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View</Button>] : []),
     ],
   })
 })
