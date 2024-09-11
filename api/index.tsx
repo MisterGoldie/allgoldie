@@ -3,6 +3,7 @@ import { Button, Frog } from 'frog'
 import { handle } from 'frog/vercel'
 import { neynar } from 'frog/middlewares'
 import axios from 'axios'
+import { Analytics } from "@vercel/analytics/react"
 
 const app = new Frog({
   basePath: '/api',
