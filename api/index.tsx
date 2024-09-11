@@ -196,9 +196,7 @@ app.frame('/view-nfts', async (c) => {
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(45deg, #FF6B6B, #4ECDC4, #45B7D1)',
-          backgroundSize: '200% 200%',
-          animation: 'gradientBG 10s ease infinite',
+          background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14  51%, #6D1510 100%)', // Gradient background
         }}
       >
         <div
