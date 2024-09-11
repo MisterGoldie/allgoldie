@@ -215,8 +215,8 @@ app.frame('/view-nfts', async (c) => {
             src={displayImage}
             alt="NFT"
             style={{
-              width: '300px',
-              height: '300px',
+              width: '400px',
+              height: '400px',
               objectFit: 'contain',
               borderRadius: '5px',
             }}
@@ -227,7 +227,7 @@ app.frame('/view-nfts', async (c) => {
         </div>
       </div>
     ),
-    imageAspectRatio: '1.91:1',
+    imageAspectRatio: '1:1',
     intents: [
       <Button action="/check">Back to check</Button>,
       <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
