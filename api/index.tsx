@@ -100,7 +100,7 @@ app.frame('/', (c) => {
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Check your Scary Garys</Button>
+      <Button action="/check">Check Scary Garys</Button>
     ],
   })
 })
