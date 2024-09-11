@@ -189,7 +189,7 @@ app.frame('/view-nfts', async (c) => {
   const prevPage = (page - 1 + totalNFTs) % totalNFTs;
 
   let displayImage = nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE;
-  let displayText = errorMessage || `Scary Gary ${page + 1} of ${totalNFTs}`;
+  let displayText = errorMessage || `Showing Scary Gary ${page + 1} of ${totalNFTs}`;
 
   return c.res({
     image: (
@@ -202,18 +202,16 @@ app.frame('/view-nfts', async (c) => {
           width: '100%',
           height: '100%',
           background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14  51%, #6D1510 100%)',
-          padding: '20px',
         }}
       >
         <div
           style={{
             backgroundColor: 'rgba(30, 30, 30, 0.8)',
-            padding: '15px',
+            padding: '20px',
             borderRadius: '10px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            maxWidth: '90%',
           }}
         >
           <img
@@ -226,14 +224,15 @@ app.frame('/view-nfts', async (c) => {
               borderRadius: '5px',
             }}
           />
-          <p style={{ color: 'white', fontSize: '20px', margin: '10px 0', textAlign: 'center' }}>
+          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
             {displayText}
           </p>
           {nftToShow && nftToShow.traits.length > 0 && (
-            <div style={{ color: 'white', fontSize: '14px', textAlign: 'center', width: '100%' }}>
+            <div style={{ marginTop: '20px', color: 'white', fontSize: '16px', textAlign: 'center', width: '100%' }}>
+              <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Traits:</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
-                {nftToShow.traits.slice(0, 4).map((trait, index) => (
-                  <div key={index} style={{ margin: '3px', padding: '3px 6px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '3px' }}>
+                {nftToShow.traits.map((trait, index) => (
+                  <div key={index} style={{ margin: '5px', padding: '5px 10px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '5px' }}>
                     <strong>{trait.trait_type}:</strong> {trait.value}
                   </div>
                 ))}
@@ -245,8 +244,8 @@ app.frame('/view-nfts', async (c) => {
     ),
     imageAspectRatio: '1:1',
     intents: [
-      <Button action="/check">Back</Button>,
-      <Button action="/view-nfts" value={prevPage.toString()}>Prev</Button>,
+      <Button action="/check">Back to check</Button>,
+      <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
       <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
     ],
   })
