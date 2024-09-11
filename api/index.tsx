@@ -227,7 +227,7 @@ app.frame('/view-nfts', async (c) => {
     ),
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Back to check</Button>,
+      <Button action="/check">Back to Check</Button>,
       <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
       <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
     ],
