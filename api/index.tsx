@@ -116,6 +116,7 @@ app.frame('/check', async (c) => {
   let nftAmount = 0;
   let errorMessage = '';
   let backgroundImage = BACKGROUND_IMAGE;
+  let ownedNFTs: NFTMetadata[] = [];
 
   if (fid) {
     try {
@@ -123,7 +124,7 @@ app.frame('/check', async (c) => {
       if (connectedAddresses.length > 0) {
         const address = connectedAddresses[0]; // Use the first connected address
         console.log('Using Ethereum address:', address);
-        const ownedNFTs = await getOwnedScaryGarys(address);
+        ownedNFTs = await getOwnedScaryGarys(address);
         nftAmount = ownedNFTs.length;
         if (nftAmount > 0) {
           backgroundImage = CONFIRMATION_IMAGE; // Use the confirmation image if user owns Scary Garys
@@ -148,7 +149,89 @@ app.frame('/check', async (c) => {
     image: backgroundImage,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">{buttonText}</Button>
+      <Button action="/check">{buttonText}</Button>,
+      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Your Scary Garys</Button>] : []),
+    ],
+  })
+})
+
+app.frame('/view-nfts', async (c) => {
+  const { fid } = c.frameData || {};
+  const page = parseInt(c.buttonValue || '0');
+  let ownedNFTs: NFTMetadata[] = [];
+  let errorMessage = '';
+
+  if (fid) {
+    try {
+      const connectedAddresses = await getConnectedAddresses(fid.toString());
+      if (connectedAddresses.length > 0) {
+        const address = connectedAddresses[0];
+        ownedNFTs = await getOwnedScaryGarys(address);
+      } else {
+        errorMessage = 'No connected Ethereum addresses found';
+      }
+    } catch (error) {
+      console.error('Error in /view-nfts:', error);
+      errorMessage = 'Error fetching NFT data';
+    }
+  } else {
+    errorMessage = 'No FID found for the user';
+  }
+
+  const totalNFTs = ownedNFTs.length;
+  const nftToShow = ownedNFTs[page] || null;
+  const nextPage = (page + 1) % totalNFTs;
+  const prevPage = (page - 1 + totalNFTs) % totalNFTs;
+
+  let displayImage = nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE;
+  let displayText = errorMessage || `Showing NFT ${page + 1} of ${totalNFTs}`;
+
+  return c.res({
+    image: (
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100%',
+          backgroundImage: `url(${BACKGROUND_IMAGE})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'rgba(30, 30, 30, 0.8)',
+            padding: '20px',
+            borderRadius: '10px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <img
+            src={displayImage}
+            alt="NFT"
+            style={{
+              width: '300px',
+              height: '300px',
+              objectFit: 'contain',
+              borderRadius: '5px',
+            }}
+          />
+          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
+            {displayText}
+          </p>
+        </div>
+      </div>
+    ),
+    imageAspectRatio: '1.91:1',
+    intents: [
+      <Button action="/check">Back to Check</Button>,
+      <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
+      <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
     ],
   })
 })
