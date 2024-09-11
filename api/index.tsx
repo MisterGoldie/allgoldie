@@ -100,7 +100,7 @@ app.frame('/', (c) => {
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Check your Scary Garys</Button>
+      <Button action="/check">Check Scary Garys</Button>
     ],
   })
 })
@@ -153,7 +153,7 @@ app.frame('/check', async (c) => {
     imageAspectRatio: '1.91:1',
     intents: [
       <Button action="/check">{buttonText}</Button>,
-      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View your Scary Garys</Button>] : []),
+      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View Your Scary Garys</Button>] : []),
     ],
   })
 })
@@ -199,9 +199,7 @@ app.frame('/view-nfts', async (c) => {
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          backgroundImage: `url(${BACKGROUND_IMAGE})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
+          background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14 51%, #6D1510 100%)',
         }}
       >
         <div
@@ -212,6 +210,8 @@ app.frame('/view-nfts', async (c) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            width: '90%',
+            maxWidth: '800px',
           }}
         >
           <img
@@ -224,7 +224,7 @@ app.frame('/view-nfts', async (c) => {
               borderRadius: '5px',
             }}
           />
-          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
+          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px', textAlign: 'center' }}>
             {displayText}
           </p>
         </div>
