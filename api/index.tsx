@@ -26,8 +26,6 @@ const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 interface NFTMetadata {
   tokenId: string;
   imageUrl: string;
-  name: string;
-  traits: { trait_type: string; value: string }[];
 }
 
 async function getConnectedAddresses(fid: string): Promise<string[]> {
@@ -89,8 +87,6 @@ async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
     return response.data.ownedNfts.map((nft: any) => ({
       tokenId: nft.id.tokenId,
       imageUrl: nft.metadata.image,
-      name: nft.metadata.name || `Scary Gary #${nft.id.tokenId}`,
-      traits: nft.metadata.attributes || [],
     }))
   } catch (error) {
     console.error('Error fetching Scary Garys:', error)
@@ -103,7 +99,7 @@ app.frame('/', (c) => {
     image: BACKGROUND_IMAGE,
     imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check">Check scary garys</Button>
+      <Button action="/check">Check Scary Garys</Button>
     ],
   })
 })
@@ -188,7 +184,7 @@ app.frame('/view-nfts', async (c) => {
   const prevPage = (page - 1 + totalNFTs) % totalNFTs;
 
   let displayImage = nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE;
-  let displayText = errorMessage || `${nftToShow?.name || 'Unknown NFT'} (${page + 1} of ${totalNFTs})`;
+  let displayText = errorMessage || `Showing NFT ${page + 1} of ${totalNFTs}`;
 
   return c.res({
     image: (
@@ -200,7 +196,9 @@ app.frame('/view-nfts', async (c) => {
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14 51%, #6D1510 100%)',
+          backgroundImage: `url(${BACKGROUND_IMAGE})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
         }}
       >
         <div
@@ -211,8 +209,6 @@ app.frame('/view-nfts', async (c) => {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            width: '90%',
-            maxWidth: '800px',
           }}
         >
           <img
@@ -225,27 +221,15 @@ app.frame('/view-nfts', async (c) => {
               borderRadius: '5px',
             }}
           />
-          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px', textAlign: 'center' }}>
+          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
             {displayText}
           </p>
-          {nftToShow && nftToShow.traits.length > 0 && (
-            <div style={{ marginTop: '20px', color: 'white', fontSize: '18px', textAlign: 'left', width: '100%' }}>
-              <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Traits:</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center' }}>
-                {nftToShow.traits.map((trait, index) => (
-                  <div key={index} style={{ margin: '5px', padding: '5px 10px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '5px' }}>
-                    <strong>{trait.trait_type}:</strong> {trait.value}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     ),
     imageAspectRatio: '1:1',
     intents: [
-      <Button action="/check">Back to Check</Button>,
+      <Button action="/check">Back to check</Button>,
       <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
       <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
     ],
