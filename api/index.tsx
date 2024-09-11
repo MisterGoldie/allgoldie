@@ -20,6 +20,7 @@ const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
 const BACKGROUND_IMAGE = 'https://bafybeichmmtimnjxzhtwedhxwgjyrusqes7zie4glvbdnx6r7clvvc77ne.ipfs.w3s.link/Thumbnail%20(28).png'
 const ERROR_BACKGROUND_IMAGE = 'https://bafybeifa7k5ei2wu6vk464axt2xysxw75fos52w765favoho63fig23sja.ipfs.w3s.link/Group%2048087.png'
 const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7zppi5jpfwqhtzceq.ipfs.w3s.link/Thumbnail%20(30).png'
+const NO_NFTS_IMAGE = 'https://bafybeifeh7oveq4o6g4vyxb4lvuf36xa3xtr4623rv5vmezyxpc4yjjwvi.ipfs.w3s.link/Group%2048087%20(2).png'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
 
@@ -128,6 +129,8 @@ app.frame('/check', async (c) => {
         nftAmount = ownedNFTs.length;
         if (nftAmount > 0) {
           backgroundImage = CONFIRMATION_IMAGE; // Use the confirmation image if user owns Scary Garys
+        } else {
+          backgroundImage = NO_NFTS_IMAGE; // Use the new image for users with 0 Scary Garys
         }
       } else {
         errorMessage = 'No connected Ethereum addresses found';
