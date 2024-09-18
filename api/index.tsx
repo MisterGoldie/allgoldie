@@ -17,6 +17,7 @@ const app = new Frog({
 
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
+const AXIOS_TIMEOUT = 8000 // 8 seconds timeout
 
 interface CastInfo {
   castedAtTimestamp: string;
@@ -55,7 +56,10 @@ async function checkRecastStatus(castHash: string, fid: string): Promise<CastInf
     const response = await axios.post(
       AIRSTACK_API_URL,
       { query },
-      { headers: { 'Authorization': AIRSTACK_API_KEY } }
+      { 
+        headers: { 'Authorization': AIRSTACK_API_KEY },
+        timeout: AXIOS_TIMEOUT
+      }
     )
 
     console.log('Airstack API Response:', JSON.stringify(response.data, null, 2));
@@ -92,7 +96,10 @@ async function checkRecastStatus(castHash: string, fid: string): Promise<CastInf
     const castInfoResponse = await axios.post(
       AIRSTACK_API_URL,
       { query: castInfoQuery },
-      { headers: { 'Authorization': AIRSTACK_API_KEY } }
+      { 
+        headers: { 'Authorization': AIRSTACK_API_KEY },
+        timeout: AXIOS_TIMEOUT
+      }
     )
 
     console.log('Cast Info Response:', JSON.stringify(castInfoResponse.data, null, 2));
@@ -158,12 +165,13 @@ app.frame('/check-interaction', async (c) => {
       return c.res({
         image: (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-            <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Cast Not Found</h1>
-            <p style={{ fontSize: '24px', color: '#666' }}>Unable to find information for this cast</p>
+            <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Information Unavailable</h1>
+            <p style={{ fontSize: '24px', color: '#666' }}>Unable to fetch cast information at the moment. Please try again later.</p>
           </div>
         ),
         intents: [
-          <Button action="/">Back to Home</Button>
+          <Button action="/">Back to Home</Button>,
+          <Button action="/check-interaction">Try Again</Button>
         ],
       })
     }
@@ -192,45 +200,18 @@ app.frame('/check-interaction', async (c) => {
       image: (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
           <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Error</h1>
-          <p style={{ fontSize: '24px', color: '#666' }}>An error occurred while checking the interaction</p>
+          <p style={{ fontSize: '24px', color: '#666' }}>An error occurred while checking the interaction. Please try again later.</p>
         </div>
       ),
       intents: [
-        <Button action="/">Back to Home</Button>
+        <Button action="/">Back to Home</Button>,
+        <Button action="/check-interaction">Try Again</Button>
       ],
     })
   }
 })
 
-app.frame('/recast', (c) => {
-  return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-        <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Recasted!</h1>
-        <p style={{ fontSize: '24px', color: '#666' }}>You recasted the frame. This action would be recorded on Farcaster.</p>
-      </div>
-    ),
-    intents: [
-      <Button action="/check-interaction">Check Again</Button>,
-      <Button action="/">Back to Home</Button>
-    ],
-  })
-})
-
-app.frame('/like', (c) => {
-  return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-        <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Liked!</h1>
-        <p style={{ fontSize: '24px', color: '#666' }}>You liked the frame. This action would be recorded on Farcaster.</p>
-      </div>
-    ),
-    intents: [
-      <Button action="/check-interaction">Check Again</Button>,
-      <Button action="/">Back to Home</Button>
-    ],
-  })
-})
+// ... (rest of the code remains the same)
 
 export const GET = handle(app)
 export const POST = handle(app)
