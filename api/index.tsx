@@ -7,7 +7,7 @@ import axios from 'axios'
 const app = new Frog({
   basePath: '/api',
   imageOptions: { width: 1200, height: 630 },
-  title: 'Frame Interaction Checker',
+  title: 'Scary Garys NFT Checker',
 }).use(
   neynar({
     apiKey: 'NEYNAR_FROG_FM',
@@ -15,238 +15,224 @@ const app = new Frog({
   })
 )
 
+const SCARY_GARYS_ADDRESS = '0xd652Eeb3431f1113312E5c763CE1d0846Aa4d7BC'
+const ALCHEMY_API_KEY = 'pe-VGWmYoLZ0RjSXwviVMNIDLGwgfkao'
+const BACKGROUND_IMAGE = 'https://bafybeichmmtimnjxzhtwedhxwgjyrusqes7zie4glvbdnx6r7clvvc77ne.ipfs.w3s.link/Thumbnail%20(28).png'
+const ERROR_BACKGROUND_IMAGE = 'https://bafybeifa7k5ei2wu6vk464axt2xysxw75fos52w765favoho63fig23sja.ipfs.w3s.link/Group%2048087.png'
+const CONFIRMATION_IMAGE = 'https://bafybeiazddyh4ewprsvau6atkrqfjrtwvwjsqiabl7zppi5jpfwqhtzceq.ipfs.w3s.link/Thumbnail%20(30).png'
+const NO_NFTS_IMAGE = 'https://bafybeifeh7oveq4o6g4vyxb4lvuf36xa3xtr4623rv5vmezyxpc4yjjwvi.ipfs.w3s.link/Group%2048087%20(2).png'
 const AIRSTACK_API_URL = 'https://api.airstack.xyz/gql'
 const AIRSTACK_API_KEY = '103ba30da492d4a7e89e7026a6d3a234e'
-const AXIOS_TIMEOUT = 8000 // 8 seconds timeout
 
-interface CastInfo {
-  castedAtTimestamp: string;
-  text: string;
-  numberOfRecasts: number;
-  numberOfLikes: number;
-  hasRecasted: boolean;
+interface NFTMetadata {
+  tokenId: string;
+  imageUrl: string;
 }
 
-async function checkRecastStatus(castHash: string, fid: string): Promise<CastInfo | null> {
-  const query = `
-    query CheckRecast {
-      FarcasterReactions(
-        input: {
-          filter: {
-            criteria: recasted,
-            hash: {_eq: "${castHash}"},
-            reactedBy: {_eq: "fc_fid:${fid}"}
-          },
-          blockchain: ALL
-        }
-      ) {
-        Reaction {
-          cast {
-            hash
-            timestamp
-            text
-            reactions {
-              count
-              reactionType
+async function getConnectedAddresses(fid: string): Promise<string[]> {
+  console.log('Attempting to fetch connected addresses for FID:', fid);
+  try {
+    const query = `
+      query ConnectedWalletWithFID($fid: String!) {
+        Socials(input: {filter: {userId: {_eq: $fid}}, blockchain: ethereum}) {
+          Social {
+            dappName
+            profileName
+            userAddress
+            connectedAddresses {
+              address
+              blockchain
             }
           }
         }
       }
+    `;
+
+    const variables = { fid };
+
+    const response = await axios.post(AIRSTACK_API_URL, 
+      { query, variables },
+      { headers: { 'Authorization': AIRSTACK_API_KEY } }
+    );
+
+    const data = response.data;
+    console.log('Full Airstack API response:', JSON.stringify(data, null, 2));
+
+    if (!data.data || !data.data.Socials || !data.data.Socials.Social) {
+      console.error('Unexpected response structure from Airstack API');
+      return [];
     }
-  `
+
+    const addresses = data.data.Socials.Social.flatMap((social: any) =>
+      social.connectedAddresses.map((addr: any) => addr.address)
+    );
+
+    console.log('Connected addresses:', addresses);
+    return addresses;
+  } catch (error) {
+    console.error('Error in getConnectedAddresses:', error);
+    return [];
+  }
+}
+
+async function getOwnedScaryGarys(address: string): Promise<NFTMetadata[]> {
+  const url = `https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}/getNFTs/`
+  const params = {
+    owner: address,
+    contractAddresses: [SCARY_GARYS_ADDRESS],
+    withMetadata: true,
+  }
 
   try {
-    const response = await axios.post(
-      AIRSTACK_API_URL,
-      { query },
-      { 
-        headers: { 'Authorization': AIRSTACK_API_KEY },
-        timeout: AXIOS_TIMEOUT
-      }
-    )
-
-    console.log('Airstack API Response:', JSON.stringify(response.data, null, 2));
-
-    const reactions = response.data?.data?.FarcasterReactions?.Reaction;
-    if (reactions && reactions.length > 0) {
-      const cast = reactions[0].cast;
-      if (cast) {
-        const numberOfRecasts = cast.reactions.find((r: any) => r.reactionType === 'RECAST')?.count || 0;
-        const numberOfLikes = cast.reactions.find((r: any) => r.reactionType === 'LIKE')?.count || 0;
-        return {
-          castedAtTimestamp: cast.timestamp || '',
-          text: cast.text || '',
-          numberOfRecasts,
-          numberOfLikes,
-          hasRecasted: true
-        };
-      }
-    }
-
-    // If no reaction found, fetch the cast info separately
-    const castInfoQuery = `
-      query GetCastInfo {
-        FarcasterCasts(
-          input: {filter: {hash: {_eq: "${castHash}"}}, blockchain: ALL}
-        ) {
-          Cast {
-            hash
-            timestamp
-            text
-            reactions {
-              count
-              reactionType
-            }
-          }
-        }
-      }
-    `
-    const castInfoResponse = await axios.post(
-      AIRSTACK_API_URL,
-      { query: castInfoQuery },
-      { 
-        headers: { 'Authorization': AIRSTACK_API_KEY },
-        timeout: AXIOS_TIMEOUT
-      }
-    )
-
-    console.log('Cast Info Response:', JSON.stringify(castInfoResponse.data, null, 2));
-
-    const castInfo = castInfoResponse.data?.data?.FarcasterCasts?.Cast?.[0];
-    if (castInfo) {
-      const numberOfRecasts = castInfo.reactions.find((r: any) => r.reactionType === 'RECAST')?.count || 0;
-      const numberOfLikes = castInfo.reactions.find((r: any) => r.reactionType === 'LIKE')?.count || 0;
-      return {
-        castedAtTimestamp: castInfo.timestamp || '',
-        text: castInfo.text || '',
-        numberOfRecasts,
-        numberOfLikes,
-        hasRecasted: false
-      };
-    }
-
-    console.log('No cast info found');
-    return null;
+    const response = await axios.get(url, { params })
+    return response.data.ownedNfts.map((nft: any) => ({
+      tokenId: nft.id.tokenId,
+      imageUrl: nft.metadata.image,
+    }))
   } catch (error) {
-    console.error('Error checking recast status:', error);
-    if (axios.isAxiosError(error)) {
-      console.error('Axios error details:', error.response?.data);
-    }
-    return null;
+    console.error('Error fetching Scary Garys:', error)
+    return []
   }
 }
 
 app.frame('/', (c) => {
   return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-        <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Frame Interaction Checker</h1>
-        <p style={{ fontSize: '24px', color: '#666' }}>Check your interaction with a specific cast</p>
-      </div>
-    ),
+    image: BACKGROUND_IMAGE,
+    imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check-interaction">Check Interaction</Button>
+      <Button action="/check">Check Scary Garys</Button>
     ],
   })
 })
 
-app.frame('/check-interaction', async (c) => {
-  const { fid } = c.frameData ?? {}
-  const castHash = '0x4d5f904518bb9e8368eb560d1b93c762f7267cb4' // Example cast hash
+app.frame('/check', async (c) => {
+  console.log('Full frameData:', JSON.stringify(c.frameData, null, 2));
+  const { fid } = c.frameData || {};
+  const { displayName, pfpUrl } = c.var.interactor || {};
 
-  if (!fid) {
-    return c.res({
-      image: (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-          <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Error</h1>
-          <p style={{ fontSize: '24px', color: '#666' }}>Unable to retrieve user information</p>
-        </div>
-      ),
-      intents: [
-        <Button action="/">Back to Home</Button>
-      ],
-    })
-  }
+  console.log('FID:', fid);
+  console.log('Display Name:', displayName);
+  console.log('Profile Picture URL:', pfpUrl);
 
-  try {
-    const castInfo = await checkRecastStatus(castHash, fid.toString())
+  let nftAmount = 0;
+  let errorMessage = '';
+  let backgroundImage = BACKGROUND_IMAGE;
+  let ownedNFTs: NFTMetadata[] = [];
 
-    if (!castInfo) {
-      return c.res({
-        image: (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-            <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Cast Not Found</h1>
-            <p style={{ fontSize: '24px', color: '#666' }}>Unable to find information for this cast</p>
-          </div>
-        ),
-        intents: [
-          <Button action="/">Back to Home</Button>,
-          <Button action="/check-interaction">Try Again</Button>
-        ],
-      })
+  if (fid) {
+    try {
+      const connectedAddresses = await getConnectedAddresses(fid.toString());
+      if (connectedAddresses.length > 0) {
+        const address = connectedAddresses[0]; 
+        console.log('Using Ethereum address:', address);
+        ownedNFTs = await getOwnedScaryGarys(address);
+        nftAmount = ownedNFTs.length;
+        if (nftAmount > 0) {
+          backgroundImage = CONFIRMATION_IMAGE; // Use the confirmation image if user owns Scary Garys
+        } else {
+          backgroundImage = NO_NFTS_IMAGE; // Use the new image for users with 0 Scary Garys
+        }
+      } else {
+        errorMessage = 'No connected Ethereum addresses found';
+        backgroundImage = ERROR_BACKGROUND_IMAGE;
+      }
+    } catch (error) {
+      console.error('Error checking NFTs:', error);
+      errorMessage = 'Error checking NFTs';
+      backgroundImage = ERROR_BACKGROUND_IMAGE;
     }
-
-    return c.res({
-      image: (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-          <h1 style={{ fontSize: '36px', color: '#333', marginBottom: '20px' }}>Cast Interaction Status</h1>
-          <p style={{ fontSize: '24px', color: '#666', marginBottom: '10px' }}>Recasts: {castInfo.numberOfRecasts}</p>
-          <p style={{ fontSize: '24px', color: '#666', marginBottom: '10px' }}>Likes: {castInfo.numberOfLikes}</p>
-          <p style={{ fontSize: '24px', color: '#666', marginBottom: '20px' }}>
-            You have {castInfo.hasRecasted ? 'recasted' : 'not recasted'} this cast
-          </p>
-          <p style={{ fontSize: '18px', color: '#999', textAlign: 'center', maxWidth: '80%' }}>{castInfo.text}</p>
-        </div>
-      ),
-      intents: [
-        ...(!castInfo.hasRecasted ? [<Button action="/recast">Recast</Button>] : []),
-        <Button action="/like">Like</Button>,
-        <Button action="/">Back to Home</Button>
-      ],
-    })
-  } catch (error) {
-    console.error('Error in /check-interaction:', error);
-    return c.res({
-      image: (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-          <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Error</h1>
-          <p style={{ fontSize: '24px', color: '#666' }}>An error occurred while checking the interaction. Please try again later.</p>
-        </div>
-      ),
-      intents: [
-        <Button action="/">Back to Home</Button>,
-        <Button action="/check-interaction">Try Again</Button>
-      ],
-    })
+  } else {
+    errorMessage = 'No FID found for the user';
+    backgroundImage = ERROR_BACKGROUND_IMAGE;
   }
-})
 
-app.frame('/recast', (c) => {
+  const buttonText = errorMessage || `You own ${nftAmount}`;
+
   return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-        <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Recasted!</h1>
-        <p style={{ fontSize: '24px', color: '#666' }}>You recasted the frame. This action would be recorded on Farcaster.</p>
-      </div>
-    ),
+    image: backgroundImage,
+    imageAspectRatio: '1.91:1',
     intents: [
-      <Button action="/check-interaction">Check Again</Button>,
-      <Button action="/">Back to Home</Button>
+      <Button action="/check">{buttonText}</Button>,
+      ...(nftAmount > 0 ? [<Button action="/view-nfts" value="0">View</Button>] : []),
     ],
   })
 })
 
-app.frame('/like', (c) => {
+app.frame('/view-nfts', async (c) => {
+  const { fid } = c.frameData || {};
+  const page = parseInt(c.buttonValue || '0');
+  let ownedNFTs: NFTMetadata[] = [];
+  let errorMessage = '';
+
+  if (fid) {
+    try {
+      const connectedAddresses = await getConnectedAddresses(fid.toString());
+      if (connectedAddresses.length > 0) {
+        const address = connectedAddresses[0];
+        ownedNFTs = await getOwnedScaryGarys(address);
+      } else {
+        errorMessage = 'No connected Ethereum addresses found';
+      }
+    } catch (error) {
+      console.error('Error in /view-nfts:', error);
+      errorMessage = 'Error fetching NFT data';
+    }
+  } else {
+    errorMessage = 'No FID found for the user';
+  }
+
+  const totalNFTs = ownedNFTs.length;
+  const nftToShow = ownedNFTs[page] || null;
+  const nextPage = (page + 1) % totalNFTs;
+  const prevPage = (page - 1 + totalNFTs) % totalNFTs;
+
+  let displayImage = nftToShow ? nftToShow.imageUrl : ERROR_BACKGROUND_IMAGE;
+  let displayText = errorMessage || `Showing Scary Gary ${page + 1} of ${totalNFTs}`;
+
   return c.res({
     image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-        <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Liked!</h1>
-        <p style={{ fontSize: '24px', color: '#666' }}>You liked the frame. This action would be recorded on Farcaster.</p>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          height: '100%',
+          background: 'linear-gradient(135deg, #D6271C 0%, #A22219 50%, #871B14  51%, #6D1510 100%)', // Gradient background
+        }}
+      >
+        <div
+          style={{
+            backgroundColor: 'rgba(30, 30, 30, 0.8)',
+            padding: '20px',
+            borderRadius: '10px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
+          <img
+            src={displayImage}
+            alt="NFT"
+            style={{
+              width: '400px',
+              height: '400px',
+              objectFit: 'contain',
+              borderRadius: '5px',
+            }}
+          />
+          <p style={{ color: 'white', fontSize: '24px', marginTop: '20px' }}>
+            {displayText}
+          </p>
+        </div>
       </div>
     ),
+    imageAspectRatio: '1:1',
     intents: [
-      <Button action="/check-interaction">Check Again</Button>,
-      <Button action="/">Back to Home</Button>
+      <Button action="/check">Back to check</Button>,
+      <Button action="/view-nfts" value={prevPage.toString()}>Previous</Button>,
+      <Button action="/view-nfts" value={nextPage.toString()}>Next</Button>,
     ],
   })
 })
