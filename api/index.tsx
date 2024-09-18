@@ -58,46 +58,64 @@ async function checkRecastStatus(castHash: string, fid: string): Promise<CastInf
       { headers: { 'Authorization': AIRSTACK_API_KEY } }
     )
 
-    const reactions = response.data.data.FarcasterReactions.Reaction
-    if (reactions.length > 0) {
-      const cast = reactions[0].cast
-      return {
-        castedAtTimestamp: cast.castedAtTimestamp,
-        text: cast.text,
-        numberOfRecasts: cast.numberOfRecasts,
-        numberOfLikes: cast.numberOfLikes,
-        hasRecasted: true
+    console.log('Airstack API Response:', JSON.stringify(response.data, null, 2));
+
+    const reactions = response.data?.data?.FarcasterReactions?.Reaction;
+    if (reactions && reactions.length > 0) {
+      const cast = reactions[0].cast;
+      if (cast) {
+        return {
+          castedAtTimestamp: cast.castedAtTimestamp || '',
+          text: cast.text || '',
+          numberOfRecasts: cast.numberOfRecasts || 0,
+          numberOfLikes: cast.numberOfLikes || 0,
+          hasRecasted: true
+        };
       }
-    } else {
-      // If no reaction found, we need to fetch the cast info separately
-      const castInfoQuery = `
-        query GetCastInfo {
-          FarcasterCasts(
-            input: {filter: {castHash: {_eq: "${castHash}"}}, blockchain: ALL}
-          ) {
-            Cast {
-              castedAtTimestamp
-              text
-              numberOfRecasts
-              numberOfLikes
-            }
+    }
+
+    // If no reaction found, fetch the cast info separately
+    const castInfoQuery = `
+      query GetCastInfo {
+        FarcasterCasts(
+          input: {filter: {castHash: {_eq: "${castHash}"}}, blockchain: ALL}
+        ) {
+          Cast {
+            castedAtTimestamp
+            text
+            numberOfRecasts
+            numberOfLikes
           }
         }
-      `
-      const castInfoResponse = await axios.post(
-        AIRSTACK_API_URL,
-        { query: castInfoQuery },
-        { headers: { 'Authorization': AIRSTACK_API_KEY } }
-      )
-      const castInfo = castInfoResponse.data.data.FarcasterCasts.Cast[0]
-      return castInfo ? {
-        ...castInfo,
+      }
+    `
+    const castInfoResponse = await axios.post(
+      AIRSTACK_API_URL,
+      { query: castInfoQuery },
+      { headers: { 'Authorization': AIRSTACK_API_KEY } }
+    )
+
+    console.log('Cast Info Response:', JSON.stringify(castInfoResponse.data, null, 2));
+
+    const castInfo = castInfoResponse.data?.data?.FarcasterCasts?.Cast?.[0];
+    if (castInfo) {
+      return {
+        castedAtTimestamp: castInfo.castedAtTimestamp || '',
+        text: castInfo.text || '',
+        numberOfRecasts: castInfo.numberOfRecasts || 0,
+        numberOfLikes: castInfo.numberOfLikes || 0,
         hasRecasted: false
-      } : null
+      };
     }
+
+    console.log('No cast info found');
+    return null;
   } catch (error) {
-    console.error('Error checking recast status:', error)
-    return null
+    console.error('Error checking recast status:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Axios error details:', error.response?.data);
+    }
+    return null;
   }
 }
 
@@ -133,14 +151,48 @@ app.frame('/check-interaction', async (c) => {
     })
   }
 
-  const castInfo = await checkRecastStatus(castHash, fid.toString())
+  try {
+    const castInfo = await checkRecastStatus(castHash, fid.toString())
 
-  if (!castInfo) {
+    if (!castInfo) {
+      return c.res({
+        image: (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
+            <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Cast Not Found</h1>
+            <p style={{ fontSize: '24px', color: '#666' }}>Unable to find information for this cast</p>
+          </div>
+        ),
+        intents: [
+          <Button action="/">Back to Home</Button>
+        ],
+      })
+    }
+
     return c.res({
       image: (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-          <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Cast Not Found</h1>
-          <p style={{ fontSize: '24px', color: '#666' }}>Unable to find information for this cast</p>
+          <h1 style={{ fontSize: '36px', color: '#333', marginBottom: '20px' }}>Cast Interaction Status</h1>
+          <p style={{ fontSize: '24px', color: '#666', marginBottom: '10px' }}>Recasts: {castInfo.numberOfRecasts}</p>
+          <p style={{ fontSize: '24px', color: '#666', marginBottom: '10px' }}>Likes: {castInfo.numberOfLikes}</p>
+          <p style={{ fontSize: '24px', color: '#666', marginBottom: '20px' }}>
+            You have {castInfo.hasRecasted ? 'recasted' : 'not recasted'} this cast
+          </p>
+          <p style={{ fontSize: '18px', color: '#999', textAlign: 'center', maxWidth: '80%' }}>{castInfo.text}</p>
+        </div>
+      ),
+      intents: [
+        ...(!castInfo.hasRecasted ? [<Button action="/recast">Recast</Button>] : []),
+        <Button action="/like">Like</Button>,
+        <Button action="/">Back to Home</Button>
+      ],
+    })
+  } catch (error) {
+    console.error('Error in /check-interaction:', error);
+    return c.res({
+      image: (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
+          <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Error</h1>
+          <p style={{ fontSize: '24px', color: '#666' }}>An error occurred while checking the interaction</p>
         </div>
       ),
       intents: [
@@ -148,25 +200,6 @@ app.frame('/check-interaction', async (c) => {
       ],
     })
   }
-
-  return c.res({
-    image: (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-        <h1 style={{ fontSize: '36px', color: '#333', marginBottom: '20px' }}>Cast Interaction Status</h1>
-        <p style={{ fontSize: '24px', color: '#666', marginBottom: '10px' }}>Recasts: {castInfo.numberOfRecasts}</p>
-        <p style={{ fontSize: '24px', color: '#666', marginBottom: '10px' }}>Likes: {castInfo.numberOfLikes}</p>
-        <p style={{ fontSize: '24px', color: '#666', marginBottom: '20px' }}>
-          You have {castInfo.hasRecasted ? 'recasted' : 'not recasted'} this cast
-        </p>
-        <p style={{ fontSize: '18px', color: '#999', textAlign: 'center', maxWidth: '80%' }}>{castInfo.text}</p>
-      </div>
-    ),
-    intents: [
-      ...(!castInfo.hasRecasted ? [<Button action="/recast">Recast</Button>] : []),
-      <Button action="/like">Like</Button>,
-      <Button action="/">Back to Home</Button>
-    ],
-  })
 })
 
 app.frame('/recast', (c) => {
