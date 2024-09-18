@@ -34,7 +34,7 @@ async function checkRecastStatus(castHash: string, fid: string): Promise<CastInf
         input: {
           filter: {
             criteria: recasted,
-            castHash: {_eq: "${castHash}"},
+            hash: {_eq: "${castHash}"},
             reactedBy: {_eq: "fc_fid:${fid}"}
           },
           blockchain: ALL
@@ -42,10 +42,13 @@ async function checkRecastStatus(castHash: string, fid: string): Promise<CastInf
       ) {
         Reaction {
           cast {
-            castedAtTimestamp
+            hash
+            timestamp
             text
-            numberOfRecasts
-            numberOfLikes
+            reactions {
+              count
+              reactionType
+            }
           }
         }
       }
@@ -68,11 +71,13 @@ async function checkRecastStatus(castHash: string, fid: string): Promise<CastInf
     if (reactions && reactions.length > 0) {
       const cast = reactions[0].cast;
       if (cast) {
+        const numberOfRecasts = cast.reactions.find((r: any) => r.reactionType === 'RECAST')?.count || 0;
+        const numberOfLikes = cast.reactions.find((r: any) => r.reactionType === 'LIKE')?.count || 0;
         return {
-          castedAtTimestamp: cast.castedAtTimestamp || '',
+          castedAtTimestamp: cast.timestamp || '',
           text: cast.text || '',
-          numberOfRecasts: cast.numberOfRecasts || 0,
-          numberOfLikes: cast.numberOfLikes || 0,
+          numberOfRecasts,
+          numberOfLikes,
           hasRecasted: true
         };
       }
@@ -82,13 +87,16 @@ async function checkRecastStatus(castHash: string, fid: string): Promise<CastInf
     const castInfoQuery = `
       query GetCastInfo {
         FarcasterCasts(
-          input: {filter: {castHash: {_eq: "${castHash}"}}, blockchain: ALL}
+          input: {filter: {hash: {_eq: "${castHash}"}}, blockchain: ALL}
         ) {
           Cast {
-            castedAtTimestamp
+            hash
+            timestamp
             text
-            numberOfRecasts
-            numberOfLikes
+            reactions {
+              count
+              reactionType
+            }
           }
         }
       }
@@ -106,11 +114,13 @@ async function checkRecastStatus(castHash: string, fid: string): Promise<CastInf
 
     const castInfo = castInfoResponse.data?.data?.FarcasterCasts?.Cast?.[0];
     if (castInfo) {
+      const numberOfRecasts = castInfo.reactions.find((r: any) => r.reactionType === 'RECAST')?.count || 0;
+      const numberOfLikes = castInfo.reactions.find((r: any) => r.reactionType === 'LIKE')?.count || 0;
       return {
-        castedAtTimestamp: castInfo.castedAtTimestamp || '',
+        castedAtTimestamp: castInfo.timestamp || '',
         text: castInfo.text || '',
-        numberOfRecasts: castInfo.numberOfRecasts || 0,
-        numberOfLikes: castInfo.numberOfLikes || 0,
+        numberOfRecasts,
+        numberOfLikes,
         hasRecasted: false
       };
     }
@@ -165,8 +175,8 @@ app.frame('/check-interaction', async (c) => {
       return c.res({
         image: (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
-            <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Information Unavailable</h1>
-            <p style={{ fontSize: '24px', color: '#666' }}>Unable to fetch cast information at the moment. Please try again later.</p>
+            <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Cast Not Found</h1>
+            <p style={{ fontSize: '24px', color: '#666' }}>Unable to find information for this cast</p>
           </div>
         ),
         intents: [
@@ -211,7 +221,35 @@ app.frame('/check-interaction', async (c) => {
   }
 })
 
-// ... (rest of the code remains the same)
+app.frame('/recast', (c) => {
+  return c.res({
+    image: (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
+        <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Recasted!</h1>
+        <p style={{ fontSize: '24px', color: '#666' }}>You recasted the frame. This action would be recorded on Farcaster.</p>
+      </div>
+    ),
+    intents: [
+      <Button action="/check-interaction">Check Again</Button>,
+      <Button action="/">Back to Home</Button>
+    ],
+  })
+})
+
+app.frame('/like', (c) => {
+  return c.res({
+    image: (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#f0f0f0', fontFamily: 'Arial, sans-serif' }}>
+        <h1 style={{ fontSize: '48px', color: '#333', marginBottom: '20px' }}>Liked!</h1>
+        <p style={{ fontSize: '24px', color: '#666' }}>You liked the frame. This action would be recorded on Farcaster.</p>
+      </div>
+    ),
+    intents: [
+      <Button action="/check-interaction">Check Again</Button>,
+      <Button action="/">Back to Home</Button>
+    ],
+  })
+})
 
 export const GET = handle(app)
 export const POST = handle(app)
